@@ -1,0 +1,294 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Student {
+  id                String   @id @default(cuid())
+  name              String
+  age               String
+  yearGroup         String
+  schoolContext     String
+  primaryLanguage   String
+  secondaryLanguage String
+  mathProfile       String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  evidenceEvents        EvidenceEvent[]
+  mastery               StudentMastery[]
+  misconceptions        StudentMisconception[]
+  recommendations       StudentRecommendation[]
+  parentReports         ParentReport[]
+  dailyPracticeSessions DailyPracticeSession[]
+}
+
+model SkillGraph {
+  skillNodeId  String  @id
+  domain       String
+  strand       String
+  skill        String
+  subskill     String
+  microSkill   String
+  nodeType     String
+  masteryRole  String
+  criticality  String
+  stage        String
+  evidenceType String
+  version      String
+  active       Boolean @default(true)
+
+  evidenceEvents EvidenceEvent[]
+  mastery        StudentMastery[]
+  mathItems      MathItem[]
+}
+
+model DependencyGraph {
+  id               String  @id @default(cuid())
+  sourceNodeId     String
+  targetNodeId     String
+  relationshipType String
+  logic            String
+  criticality      String
+  edgeWeight       Float   @default(1)
+  version          String
+  active           Boolean @default(true)
+
+  @@index([sourceNodeId])
+  @@index([targetNodeId])
+}
+
+model MisconceptionFramework {
+  misconceptionId        String  @id
+  name                   String
+  domain                 String
+  relatedSkillIds        Json
+  description            String
+  typicalStudentThinking String
+  diagnosticSignals      Json
+  rootCause              String
+  frequency              String
+  severity               String
+  persistence            String
+  futureRisks            Json
+  version                String
+  active                 Boolean @default(true)
+
+  studentMisconceptions StudentMisconception[]
+}
+
+model EvidenceEvent {
+  id                    String   @id @default(cuid())
+  assessmentAttemptId   String?
+  itemId                String?
+  studentId             String
+  skillNodeId           String
+  eventType             String
+  evidenceCategory      String
+  prompt                String
+  response              String
+  explanation           String?
+  representationChoice  String?
+  correctness           Float
+  explanationScore      Float
+  representationScore   Float
+  transferScore         Float
+  retentionSignal       Float
+  hintCount             Int
+  maxHintLevel          Int
+  confidenceRating      Float
+  confidenceCalibration Float
+  timeOnTaskSeconds     Int
+  errorPattern          Json?
+  misconceptionSignals  Json?
+  evidenceWeight        Float
+  modelConfidence       Float
+  createdAt             DateTime @default(now())
+
+  student Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skill   SkillGraph @relation(fields: [skillNodeId], references: [skillNodeId])
+  item    MathItem?  @relation(fields: [itemId], references: [itemId])
+
+  @@unique([studentId, assessmentAttemptId, skillNodeId])
+  @@index([assessmentAttemptId])
+  @@index([itemId])
+  @@index([studentId, skillNodeId])
+  @@index([createdAt])
+  @@index([eventType])
+}
+
+model MathItem {
+  itemId                String   @id
+  subject               String
+  yearGroup             String
+  domain                String
+  strand                String
+  skillNodeId           String
+  title                 String
+  itemType              String
+  sequence              Int      @default(0)
+  difficulty            Int
+  prompt                String
+  expectedAnswer        String
+  acceptedAnswers       Json
+  commonWrongAnswers    Json
+  misconceptionIds      Json
+  explanationRubric     Json
+  representationOptions Json
+  placeholder           String   @default("Type your answer and explain your thinking")
+  transferLevel         String
+  evidenceCategory      String
+  evidenceWeight        Float
+  active                Boolean  @default(true)
+  version               String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  skill              SkillGraph          @relation(fields: [skillNodeId], references: [skillNodeId])
+  evidenceEvents     EvidenceEvent[]
+  dailyPracticeItems DailyPracticeItem[]
+
+  @@index([subject, yearGroup])
+  @@index([itemType, sequence])
+  @@index([itemType])
+  @@index([domain, strand])
+  @@index([skillNodeId])
+  @@index([active])
+}
+
+model DailyPracticeSession {
+  id           String    @id @default(cuid())
+  studentId    String
+  practiceDate String
+  status       String    @default("not_started")
+  generatedAt  DateTime  @default(now())
+  completedAt  DateTime?
+  summary      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  student Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  items   DailyPracticeItem[]
+
+  @@unique([studentId, practiceDate])
+  @@index([studentId, status])
+  @@index([practiceDate])
+}
+
+model DailyPracticeItem {
+  id           String   @id @default(cuid())
+  sessionId    String
+  itemId       String
+  position     Int
+  reasonChosen String
+  sourceType   String
+  completed    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  session DailyPracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  item    MathItem             @relation(fields: [itemId], references: [itemId])
+
+  @@unique([sessionId, itemId])
+  @@unique([sessionId, position])
+  @@index([sessionId])
+  @@index([itemId])
+  @@index([sourceType])
+}
+
+model StudentMastery {
+  id                         String    @id @default(cuid())
+  studentId                  String
+  skillNodeId                String
+  masteryLevel               Int       @default(1)
+  aiState                    String    @default("Not Learned")
+  accuracyScore              Float     @default(20)
+  fluencyScore               Float     @default(20)
+  representationScore        Float     @default(20)
+  explanationScore           Float     @default(20)
+  transferScore              Float     @default(10)
+  retentionScore             Float     @default(50)
+  hintIndependenceScore      Float     @default(80)
+  confidenceCalibrationScore Float     @default(50)
+  misconceptionRiskScore     Float     @default(0)
+  evidenceCount              Int       @default(0)
+  evidenceDiversity          Float     @default(0)
+  modelConfidence            Float     @default(25)
+  whyThisStatus              String    @default("Waiting for diagnostic evidence.")
+  lastEvidenceAt             DateTime?
+  nextReviewDueAt            DateTime?
+  updatedAt                  DateTime  @updatedAt
+
+  student Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skill   SkillGraph @relation(fields: [skillNodeId], references: [skillNodeId])
+
+  @@unique([studentId, skillNodeId])
+  @@index([studentId])
+  @@index([skillNodeId])
+  @@index([aiState])
+  @@index([nextReviewDueAt])
+}
+
+model StudentMisconception {
+  id                 String    @id @default(cuid())
+  studentId          String
+  misconceptionId    String
+  probability        Float     @default(0)
+  status             String    @default("possible")
+  evidenceCount      Int       @default(0)
+  firstDetectedAt    DateTime?
+  lastDetectedAt     DateTime?
+  verificationCount  Int       @default(0)
+  repairAttemptCount Int       @default(0)
+  recurrenceCount    Int       @default(0)
+  resolvedAt         DateTime?
+  modelConfidence    Float     @default(35)
+
+  student       Student                @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  misconception MisconceptionFramework @relation(fields: [misconceptionId], references: [misconceptionId])
+
+  @@unique([studentId, misconceptionId])
+  @@index([studentId])
+  @@index([status])
+}
+
+model StudentRecommendation {
+  id                       String    @id @default(cuid())
+  studentId                String
+  recommendedAction        String
+  targetSkillNodeId        String?
+  targetMisconceptionId    String?
+  priorityScore            Float
+  studentFriendlyRationale String
+  parentFriendlyRationale  String
+  internalRationale        String
+  status                   String    @default("active")
+  generatedAt              DateTime  @default(now())
+  completedAt              DateTime?
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, status])
+}
+
+model ParentReport {
+  id                     String   @id @default(cuid())
+  studentId              String
+  periodStart            DateTime
+  periodEnd              DateTime
+  summary                String
+  strengths              Json
+  focusAreas             Json
+  retentionStatus        Json
+  misconceptionNotes     Json
+  recommendedHomeSupport String
+  generatedAt            DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, generatedAt])
+}
