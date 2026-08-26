@@ -3,8 +3,8 @@ import { Brain, CalendarCheck, ClipboardCheck, Database, FileText, Gauge, Histor
 import { cn } from "@/lib/utils";
 
 const nav = [
-  ["/", "Dashboard", Home],
-  ["/today", "Today", CalendarCheck],
+  ["/owner", "Owner overview", Home],
+  ["/today", "Practice review", CalendarCheck],
   ["/diagnostic", "Diagnostic", ClipboardCheck],
   ["/next", "Next Action", Route],
   ["/retention", "Retention", RefreshCw],

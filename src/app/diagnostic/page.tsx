@@ -1,12 +1,10 @@
 import { DiagnosticForm } from "./DiagnosticForm";
 import { AppShell, PageHeader } from "@/components/masteryos/chrome";
 import { getActiveDiagnosticItems } from "@/lib/learning/assessment";
-import { getMvpState } from "@/lib/learning/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function DiagnosticPage() {
-  await getMvpState();
   const diagnosticItems = await getActiveDiagnosticItems();
   return (
     <AppShell active="/diagnostic">

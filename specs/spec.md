@@ -36,6 +36,9 @@ Premium calm academic intelligence dashboard: ivory background, ink text, muted 
 ## Feature list
 | Feature | Status | Spec |
 |---|---|---|
+| Haim Daily Phase 1 child-first practice experience | done | [specs/haim-daily-phase-1/document.md](specs/haim-daily-phase-1/document.md) |
+| Daily practice item-by-item answer review | done | [specs/daily-practice-review/document.md](specs/daily-practice-review/document.md) |
+| iPad performance feedback and standalone web app support | done | [specs/ipad-performance-and-pwa/document.md](specs/ipad-performance-and-pwa/document.md) |
 | Skill graph seed and dependency graph subset for FDP domain | done | [specs/graph-seed/document.md](specs/graph-seed/document.md) |
 | Domain expansion for Number & Operations and Ratio, Proportion & Rates | done | [specs/domain-expansion/document.md](specs/domain-expansion/document.md) |
 | Short diagnostic assessment that records evidence and misconception signals | done | [specs/diagnostic-assessment/document.md](specs/diagnostic-assessment/document.md) |

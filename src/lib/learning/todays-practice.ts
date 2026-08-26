@@ -9,7 +9,6 @@ export const DAILY_PRACTICE_SIZE = 5;
 type ItemWithSkill = MathItem & { skill: SkillGraph };
 type PracticeItemWithItem = DailyPracticeItem & { item: ItemWithSkill };
 type PracticeSessionWithItems = DailyPracticeSession & { items: PracticeItemWithItem[] };
-
 type Candidate = {
   item: ItemWithSkill;
   sourceType: string;
@@ -28,6 +27,17 @@ export type TodaysPracticeState = {
     totalCount: number;
     skillsPractised: string[];
     learnedToday: string[];
+    review: {
+      itemId: string;
+      position: number;
+      title: string;
+      prompt: string;
+      answer: string;
+      explanation: string;
+      isCorrect: boolean;
+      expectedAnswer: string;
+      feedback: string;
+    }[];
   } | null;
 };
 
@@ -99,7 +109,7 @@ function findItem(items: ItemWithSkill[], predicate: (item: ItemWithSkill) => bo
   return [...items].filter(predicate).sort((a, b) => itemTypeRank(a.itemType) - itemTypeRank(b.itemType) || a.sequence - b.sequence || a.itemId.localeCompare(b.itemId))[0] ?? null;
 }
 
-async function generatePracticeItems(studentId: string): Promise<Candidate[]> {
+async function generatePracticeItems(studentId: string, excludedItemIds = new Set<string>()): Promise<Candidate[]> {
   const [nextState, retentionState, activeItems, misconceptions, mastery] = await Promise.all([
     getNextBestActionState(),
     getRetentionQueueStateForStudent(studentId),
@@ -109,7 +119,7 @@ async function generatePracticeItems(studentId: string): Promise<Candidate[]> {
   ]);
 
   const candidates: Candidate[] = [];
-  const usedItemIds = new Set<string>();
+  const usedItemIds = new Set<string>(excludedItemIds);
   const usedSkillIds = new Set<string>();
 
   if (nextState.selectedItem) {
@@ -201,16 +211,78 @@ async function createTodaysSession(studentId: string, practiceDate: string) {
   return loadSession(session.id);
 }
 
+export async function getPracticeSessionState(sessionId: string): Promise<TodaysPracticeState | null> {
+  const student = await ensureSeedData();
+  const session = await loadSession(sessionId);
+  if (!session || session.studentId !== student.id) return null;
+  const completedEvidence = await completedEvidenceForSession(session);
+  return {
+    studentId: student.id,
+    practiceDate: session.practiceDate,
+    session,
+    items: session.items,
+    statusLabel: session.status === "completed" ? "Completed today" : "Not started",
+    isCompleted: session.status === "completed",
+    completedEvidence,
+  };
+}
+
+export async function createExtraPracticeSession() {
+  const student = await ensureSeedData();
+  const date = todayKey();
+  const sessions = await prisma.dailyPracticeSession.findMany({
+    where: { studentId: student.id, practiceDate: { startsWith: date } },
+    include: { items: true },
+    orderBy: { generatedAt: "asc" },
+  });
+  const extraNumber = sessions.filter((session) => session.practiceDate.startsWith(`${date}-extra-`)).length + 1;
+  const practiceDate = `${date}-extra-${extraNumber}`;
+  const existing = await loadTodaysSession(student.id, practiceDate);
+  if (existing) return existing;
+  const completedItemIds = new Set(sessions.filter((session) => session.status === "completed").flatMap((session) => session.items.map((item) => item.itemId)));
+  const candidates = await generatePracticeItems(student.id, completedItemIds);
+  const session = await prisma.dailyPracticeSession.create({
+    data: {
+      studentId: student.id,
+      practiceDate,
+      status: "not_started",
+      items: { create: candidates.map((candidate, index) => ({ itemId: candidate.item.itemId, position: index + 1, sourceType: "Extra Practice", reasonChosen: "Haim chose an extra five-question practice set today." })) },
+    },
+  });
+  return loadSession(session.id);
+}
+
 async function completedEvidenceForSession(session: PracticeSessionWithItems) {
   if (session.status !== "completed") return null;
   const events = await prisma.evidenceEvent.findMany({
     where: { assessmentAttemptId: dailyPracticeAttemptId(session), eventType: "Daily Practice" },
-    include: { skill: true },
+    include: { skill: true, item: true },
     orderBy: { createdAt: "asc" },
   });
   const correctCount = events.filter((event) => event.correctness === 100).length;
   const skillsPractised = [...new Set(events.map((event) => event.skill.microSkill))];
   const lowerScoring = events.filter((event) => event.correctness < 100 || event.explanationScore < 65).slice(0, 2);
+  const review = session.items.map((sessionItem) => {
+    const event = events.find((candidate) => candidate.itemId === sessionItem.itemId);
+    if (!event || !event.item) return null;
+    const wrong = Array.isArray(event.item.commonWrongAnswers)
+      ? event.item.commonWrongAnswers.find((candidate) => candidate && typeof candidate === "object" && String((candidate as { answer?: unknown }).answer ?? "").trim() === event.response.trim()) as { reason?: unknown } | undefined
+      : undefined;
+    const isCorrect = event.correctness === 100;
+    return {
+      itemId: sessionItem.itemId,
+      position: sessionItem.position,
+      title: event.item.title,
+      prompt: event.item.prompt,
+      answer: event.response,
+      explanation: event.explanation?.trim() || "No explanation was submitted.",
+      isCorrect,
+      expectedAnswer: event.item.expectedAnswer,
+      feedback: isCorrect
+        ? "Correct. Keep the method you used, and remember that a future review checks whether it still feels secure."
+        : wrong?.reason ? String(wrong.reason) : "Not quite yet. Recheck the key idea in the question, then try a similar example with a clear explanation.",
+    };
+  }).filter((item): item is NonNullable<typeof item> => Boolean(item));
   return {
     correctCount,
     totalCount: events.length || session.items.length,
@@ -218,6 +290,7 @@ async function completedEvidenceForSession(session: PracticeSessionWithItems) {
     learnedToday: lowerScoring.length
       ? lowerScoring.map((event) => `${event.skill.microSkill} may need another short review.`)
       : ["Haim added useful practice evidence today.", "Correct answers still need future review before permanent mastery is claimed."],
+    review,
   };
 }
 

@@ -127,7 +127,7 @@ if (!resetResponse.ok) throw new Error(`/api/reset returned HTTP ${resetResponse
 console.log("✓ /api/reset cleared prior MVP evidence for deterministic smoke test");
 
 for (const path of pages) await assertPage(path);
-await assertPage("/", "Haim’s Year 6 maths learning state");
+await assertPage("/", "Hi, Haim");
 await assertPage("/items", "Total seeded items");
 await assertPage("/items", "Misconception Repair");
 await assertPage("/items", "Number &amp; Operations");
@@ -186,6 +186,18 @@ await assertPage("/timeline", "Corrective evidence");
 const todayPayload = await submitTodayPractice(todayIdsA);
 console.log(`✓ /api/today created daily-practice evidence for ${todayPayload.result.totalCount} items`);
 await assertPage("/today?completed=1", "Today’s practice is complete");
+await assertPage("/today?completed=1", "Review your answers");
+
+const extraResponse = await fetch(`${baseUrl}/api/practice/extra`, { method: "POST" });
+const extraPayload = await extraResponse.json();
+if (!extraResponse.ok || !extraPayload.sessionId) throw new Error(`extra practice creation failed: ${JSON.stringify(extraPayload)}`);
+const extraPage = await fetch(`${baseUrl}/practice?sessionId=${extraPayload.sessionId}`);
+const extraHtml = await extraPage.text();
+if (!extraPage.ok || !extraHtml.includes("Today’s maths") || !extraHtml.includes("Question")) throw new Error("extra practice page did not show one-at-a-time five-question flow");
+const checkResponse = await fetch(`${baseUrl}/api/practice/check`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId: todayIdsA[0], answer: "0", explanation: "", representation: "none", confidence: 2 }) });
+const checkPayload = await checkResponse.json();
+if (!checkResponse.ok || typeof checkPayload.correct !== "boolean" || !checkPayload.expectedAnswer) throw new Error(`single-answer check failed: ${JSON.stringify(checkPayload)}`);
+console.log("✓ Haim Daily extra five-question set and immediate answer check work");
 await assertPage("/evidence", "Daily Practice");
 await assertPage("/timeline", "Daily Practice");
 await assertPage("/tutor", "Today’s practice result");

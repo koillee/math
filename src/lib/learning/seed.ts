@@ -92,7 +92,19 @@ async function seedData() {
 }
 
 export async function ensureSeedData() {
-  seedDataPromise ??= seedData();
+  // Most production requests arrive in a fresh serverless worker. Avoid
+  // replaying the full seed (dozens of upserts) when the database is already
+  // ready; the old behaviour made the first tap in a worker feel frozen.
+  seedDataPromise ??= (async () => {
+    const [student, skillCount, itemCount, masteryCount] = await Promise.all([
+      prisma.student.findFirst({ where: { name: MVP_STUDENT.name } }),
+      prisma.skillGraph.count({ where: { active: true, version: "v3-multi-domain" } }),
+      prisma.mathItem.count({ where: { active: true, version: "v2-sprint-f-multi-domain" } }),
+      prisma.studentMastery.count(),
+    ]);
+    if (student && skillCount >= skillNodes.length && itemCount >= itemBankSeeds.length && masteryCount >= skillNodes.length) return student;
+    return seedData();
+  })();
   try {
     return await seedDataPromise;
   } catch (error) {

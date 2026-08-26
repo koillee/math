@@ -10,7 +10,9 @@ MasteryOS Math is a Next.js web app for Haim’s Year 6 maths practice. It curre
 - Number & Operations
 - Ratio, Proportion & Rates
 
-The app is not a native iPad app. To use it on an iPad, deploy it to Vercel, open the Vercel URL in Safari, then use **Share → Add to Home Screen**.
+The app is not a native iPad App Store app. To use it on an iPad, deploy it to Vercel, open the Vercel URL directly in Safari, then use **Share → Add to Home Screen**.
+
+After the standalone web-app update, delete the old Home Screen shortcut first. Open the deployed URL directly in Safari (not inside another app's browser), choose **Share → Add to Home Screen**, and then launch the new icon from the iPad Home Screen. Opening the URL in a normal Safari tab will remain inside Safari by design.
 
 ## Important: secrets are not included
 
