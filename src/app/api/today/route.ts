@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { processDailyPracticeSubmission, type DailyPracticeSubmission } from "@/lib/learning/process";
-import { getTodaysPracticeState } from "@/lib/learning/todays-practice";
+import { getPracticeSessionState } from "@/lib/learning/todays-practice";
 
 function clampConfidence(value: unknown) {
   const n = Number(value ?? 3);
@@ -14,11 +14,11 @@ function cleanText(value: unknown, maxLength = 1200) {
 
 export async function POST(request: Request) {
   try {
-    const state = await getTodaysPracticeState();
     const body = (await request.json()) as { sessionId?: unknown; attemptId?: unknown; submission?: Record<string, Partial<DailyPracticeSubmission[string]>> };
     const sessionId = cleanText(body.sessionId, 120);
     const attemptId = cleanText(body.attemptId, 180) || undefined;
-    if (!sessionId || sessionId !== state.session.id) return NextResponse.json({ error: "Today's practice session is not available. Please refresh and try again." }, { status: 400 });
+    const state = sessionId ? await getPracticeSessionState(sessionId) : null;
+    if (!state || state.isCompleted) return NextResponse.json({ error: "This practice set is not available. Please return to Today and try again." }, { status: 400 });
 
     const incoming = body.submission ?? {};
     const submission: DailyPracticeSubmission = {};

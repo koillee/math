@@ -87,5 +87,5 @@ The existing `POST /api/today` remains the source of truth for saving the five-a
 - A later Phase 1.5 can persist each answer independently and prepare the next day’s plan asynchronously.
 
 ## Status / open questions
-- Status: implemented and validated on 2026-08-26.
+- Status: implemented and validated on 2026-08-26. Completion handling was hardened after production testing: both required and optional extra sessions now validate by their submitted session ID, and a completed set uses a reliable full-page handoff to the answer-review screen.
 - Open question: after pilot feedback, decide whether submitted answers should persist one-by-one before the fifth answer.

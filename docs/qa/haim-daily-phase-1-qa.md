@@ -25,3 +25,10 @@ Date: 2026-08-26
 
 ## Follow-up performance note
 The new child route is intentionally much lighter than the prior dashboard. The existing final session-save operation still refreshes the full learning profile and can take several seconds; this happens once after the fifth question, not on every navigation. A Phase 1.5 improvement can persist/recompute individual answers asynchronously after additional pilot feedback.
+
+## Completion-flow repair — 2026-08-26
+- Found and fixed a session validation bug: the final-save route previously checked only the base daily session, so an optional extra set was rejected as unavailable.
+- The route now loads and validates the exact submitted session ID; required and `-extra-n` sessions both save correctly.
+- Verified an extra five-item session saves through `POST /api/today` with HTTP 200 and five touched skills.
+- The child flow now uses `window.location.assign` after the final save so iPad Safari reliably opens the completion/review screen even after the server-side learning-profile update.
+- Re-ran the full MVP smoke test successfully after the repair.

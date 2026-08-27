@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ArrowRight, CheckCircle2, CircleAlert, Lightbulb } from "lucide-react";
 
@@ -11,7 +10,6 @@ type Feedback = { correct: boolean; expectedAnswer: string; feedback: string };
 function choices(value: unknown) { return Array.isArray(value) ? value.filter((choice): choice is string => typeof choice === "string") : []; }
 
 export function PracticeFlow({ sessionId, practiceDate, items }: { sessionId: string; practiceDate: string; items: PracticeItem[] }) {
-  const router = useRouter();
   const [index, setIndex] = useState(0);
   const [entries, setEntries] = useState<Record<string, Entry>>({});
   const [feedback, setFeedback] = useState<Record<string, Feedback>>({});
@@ -45,7 +43,9 @@ export function PracticeFlow({ sessionId, practiceDate, items }: { sessionId: st
       const response = await fetch("/api/today", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId, attemptId: `daily-practice-${practiceDate}-${sessionId}`, submission }) });
       const data = (await response.json().catch(() => ({}))) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Your practice could not be saved.");
-      router.push(`/today?completed=1&sessionId=${sessionId}`);
+      // A full navigation is intentionally used here. It is more reliable than
+      // client-side routing in an iPad Home Screen web app after a long save.
+      window.location.assign(`/today?completed=1&sessionId=${sessionId}`);
     } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Your practice could not be saved."); setSaving(false); }
   }
 
