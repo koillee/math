@@ -10,7 +10,7 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Topic = "multiplication" | "fractions" | "decimals" | "percentages";
 type Stage = "goals" | "lesson" | "practice" | "gugudan" | "summary";
@@ -26,11 +26,21 @@ type Question = {
   parentNote: string;
 };
 
+type SessionRecord = {
+  date: string;
+  topic: Topic;
+  total: number;
+  correct: number;
+  needsReview: Topic[];
+};
+
 type Template = {
   topic: Topic;
   label: string;
   build: (seed: number) => Question;
 };
+
+const progressKey = "haim-daily-practice-progress-v2";
 
 const topicLabels: Record<Question["topic"], string> = {
   gugudan: "구구단 finish",
@@ -107,6 +117,11 @@ function daySeed() {
   );
 }
 
+function todayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
 function pick<T>(items: readonly T[], seed: number) {
   return items[Math.abs(seed) % items.length];
 }
@@ -180,6 +195,37 @@ const templates: Template[] = [
   },
   {
     topic: "multiplication",
+    label: "Story problem",
+    build(seed) {
+      const cases = [
+        [8, 6, "gymnastics ribbons"],
+        [7, 9, "cheer practice counts"],
+        [6, 8, "taekwondo kick sets"],
+        [9, 4, "craft beads"],
+      ] as const;
+      const [groups, size, item] = pick(cases, seed + 4);
+      const answer = groups * size;
+      return {
+        id: `story-multiply-${groups}-${size}`,
+        topic: "multiplication",
+        label: "Story problem",
+        prompt: `Haim has ${groups} groups of ${size} ${item}. How many ${item} altogether?`,
+        choices: options(answer, [
+          groups + size,
+          answer - groups,
+          answer + size,
+          groups * (size - 1),
+        ]),
+        answer: String(answer),
+        hint: "Equal groups usually means multiplication.",
+        explanation: `${groups} equal groups of ${size} means ${groups} x ${size} = ${answer}.`,
+        parentNote:
+          "Ask whether the answer is a total, a group size, or a number of groups.",
+      };
+    },
+  },
+  {
+    topic: "multiplication",
     label: "Missing number",
     build(seed) {
       const facts = [
@@ -237,6 +283,31 @@ const templates: Template[] = [
   },
   {
     topic: "fractions",
+    label: "Equivalent fractions",
+    build(seed) {
+      const cases = [
+        ["1/2", "2/4", "3/4", "4/8"],
+        ["2/3", "4/6", "2/6", "3/6"],
+        ["3/5", "6/10", "3/10", "5/10"],
+        ["1/4", "2/8", "4/8", "3/8"],
+      ] as const;
+      const [base, answer, distractorA, distractorB] = pick(cases, seed + 9);
+      return {
+        id: `fraction-equivalent-${base}-${answer}`,
+        topic: "fractions",
+        label: "Equivalent fractions",
+        prompt: `Which fraction is equal to ${base}?`,
+        choices: [answer, distractorA, distractorB, "Cannot tell"].sort(),
+        answer,
+        hint: "Equivalent fractions cover the same amount of the same whole.",
+        explanation: `${base} and ${answer} name the same part of the whole because the numerator and denominator changed by the same scale.`,
+        parentNote:
+          "Drawing two bars with the same length helps make equivalent fractions feel real.",
+      };
+    },
+  },
+  {
+    topic: "fractions",
     label: "Compare fractions",
     build(seed) {
       const cases = [
@@ -284,6 +355,34 @@ const templates: Template[] = [
         explanation: reason,
         parentNote:
           "Ask Haim to read the decimals as tenths, hundredths, or thousandths.",
+      };
+    },
+  },
+  {
+    topic: "decimals",
+    label: "Decimal addition",
+    build(seed) {
+      const cases = [
+        ["2.35", "1.4", "3.75"],
+        ["0.6", "0.27", "0.87"],
+        ["4.08", "0.5", "4.58"],
+        ["3.2", "1.65", "4.85"],
+      ] as const;
+      const [left, right, answer] = pick(cases, seed + 15);
+      return {
+        id: `decimal-add-${left}-${right}`,
+        topic: "decimals",
+        label: "Decimal addition",
+        prompt: `Calculate ${left} + ${right}.`,
+        choices: [answer, String(Number(answer) + 0.1), left + right, "5.00"]
+          .filter((choice, position, all) => all.indexOf(choice) === position)
+          .slice(0, 4)
+          .sort(),
+        answer,
+        hint: "Line up the decimal points before adding.",
+        explanation: `${left} + ${right} = ${answer}. The decimal point stays lined up with the place-value columns.`,
+        parentNote:
+          "If she rushes, ask her to rewrite the numbers with matching decimal places.",
       };
     },
   },
@@ -355,6 +454,32 @@ const templates: Template[] = [
       };
     },
   },
+  {
+    topic: "percentages",
+    label: "Discount story",
+    build(seed) {
+      const cases = [
+        [25, 40, 30],
+        [50, 36, 18],
+        [10, 90, 81],
+        [20, 60, 48],
+      ] as const;
+      const [percent, price, answer] = pick(cases, seed + 19);
+      const discount = price - answer;
+      return {
+        id: `percent-discount-${percent}-${price}`,
+        topic: "percentages",
+        label: "Discount story",
+        prompt: `A HK$${price} item is ${percent}% off. What is the sale price?`,
+        choices: options(answer, [discount, price + discount, price - percent]),
+        answer: String(answer),
+        hint: "First find the discount amount, then subtract it from the original price.",
+        explanation: `${percent}% of ${price} is ${discount}, so the sale price is ${price} - ${discount} = ${answer}.`,
+        parentNote:
+          "Check whether she answers the discount amount or the final sale price.",
+      };
+    },
+  },
 ];
 
 function buildDailySet() {
@@ -378,8 +503,10 @@ function buildDailySet() {
     questions: [
       todayTemplates[0].build(seed + 1),
       (todayTemplates[1] ?? todayTemplates[0]).build(seed + 2),
+      (todayTemplates[2] ?? todayTemplates[0]).build(seed + 4),
       reviewTemplates[(seed + 3) % reviewTemplates.length].build(seed + 3),
       reviewTemplates[(seed + 5) % reviewTemplates.length].build(seed + 5),
+      reviewTemplates[(seed + 7) % reviewTemplates.length].build(seed + 7),
     ],
   };
 }
@@ -391,7 +518,10 @@ export function DailyPractice() {
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [attempts, setAttempts] = useState<Record<string, number>>({});
   const [showHint, setShowHint] = useState<Record<string, boolean>>({});
+  const [sessionHistory, setSessionHistory] = useState<SessionRecord[]>([]);
+  const savedSummaryRef = useRef(false);
   const current = stage === "gugudan" ? gugudan : questions[index];
   const selected = answers[current.id] ?? "";
   const isChecked = checked[current.id] ?? false;
@@ -403,10 +533,76 @@ export function DailyPractice() {
     (question) =>
       checked[question.id] && answers[question.id] === question.answer,
   ).length;
+  const firstTryCorrectCount = allQuestions.filter(
+    (question) =>
+      checked[question.id] &&
+      answers[question.id] === question.answer &&
+      (attempts[question.id] ?? 1) === 1,
+  ).length;
+  const needsReview = Array.from(
+    new Set(
+      allQuestions
+        .filter(
+          (question) =>
+            checked[question.id] && answers[question.id] !== question.answer,
+        )
+        .map((question) => question.topic)
+        .filter((topic): topic is Topic => topic !== "gugudan"),
+    ),
+  );
+  const suggestedReview =
+    needsReview[0] ??
+    sessionHistory
+      .flatMap((record) => record.needsReview)
+      .find((topic) => topic !== todayTopic);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(progressKey);
+      if (saved) {
+        setSessionHistory(JSON.parse(saved).slice(0, 10));
+      }
+    } catch {
+      setSessionHistory([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!(stage === "summary" || completed) || savedSummaryRef.current) return;
+    savedSummaryRef.current = true;
+    const record: SessionRecord = {
+      date: todayKey(),
+      topic: todayTopic,
+      total: allQuestions.length,
+      correct: correctCount,
+      needsReview,
+    };
+    const nextHistory = [
+      record,
+      ...sessionHistory.filter((item) => item.date !== record.date),
+    ].slice(0, 10);
+    setSessionHistory(nextHistory);
+    try {
+      window.localStorage.setItem(progressKey, JSON.stringify(nextHistory));
+    } catch {
+      // Local progress is helpful, but the practice should still work without it.
+    }
+  }, [
+    allQuestions.length,
+    completed,
+    correctCount,
+    needsReview,
+    sessionHistory,
+    stage,
+    todayTopic,
+  ]);
 
   function selectAnswer(answer: string) {
-    if (isChecked) return;
+    if (isChecked && selected === current.answer) return;
     setAnswers((all) => ({ ...all, [current.id]: answer }));
+    if (isChecked) {
+      setChecked((all) => ({ ...all, [current.id]: false }));
+    }
   }
 
   function next() {
@@ -422,11 +618,35 @@ export function DailyPractice() {
   }
 
   function restart() {
+    savedSummaryRef.current = false;
     setStage("goals");
     setIndex(0);
     setAnswers({});
     setChecked({});
+    setAttempts({});
     setShowHint({});
+  }
+
+  function checkCurrent() {
+    if (!selected) return;
+    setAttempts((all) => ({
+      ...all,
+      [current.id]: (all[current.id] ?? 0) + 1,
+    }));
+    setChecked((all) => ({ ...all, [current.id]: true }));
+    if (selected !== current.answer) {
+      setShowHint((all) => ({ ...all, [current.id]: true }));
+    }
+  }
+
+  function tryAgain() {
+    setChecked((all) => ({ ...all, [current.id]: false }));
+    setAnswers((all) => {
+      const nextAnswers = { ...all };
+      delete nextAnswers[current.id];
+      return nextAnswers;
+    });
+    setShowHint((all) => ({ ...all, [current.id]: true }));
   }
 
   return (
@@ -447,7 +667,7 @@ export function DailyPractice() {
         </div>
         <p className="mt-4 max-w-2xl text-lg leading-7 text-[#d8cdbb]">
           Today starts with {topicLabels[todayTopic].toLowerCase()}, then gives
-          four practice questions and one 구구단 fluency finish.
+          six practice questions and one 구구단 fluency finish.
         </p>
       </section>
 
@@ -470,7 +690,7 @@ export function DailyPractice() {
             </div>
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            {["Learn the idea", "Try four questions", "Finish with 구구단"].map(
+            {["Learn the idea", "Try six questions", "Finish with 구구단"].map(
               (item, position) => (
                 <div key={item} className="rounded-2xl bg-[#f7fbf7] p-4">
                   <p className="text-2xl font-semibold text-[#2f6173]">
@@ -653,14 +873,18 @@ export function DailyPractice() {
               </button>
               {!isChecked ? (
                 <button
-                  onClick={() =>
-                    selected &&
-                    setChecked((all) => ({ ...all, [current.id]: true }))
-                  }
+                  onClick={checkCurrent}
                   disabled={!selected}
                   className="inline-flex flex-1 items-center justify-center rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1] disabled:opacity-50"
                 >
                   Check
+                </button>
+              ) : !isCorrect && (attempts[current.id] ?? 1) < 2 ? (
+                <button
+                  onClick={tryAgain}
+                  className="inline-flex flex-1 items-center justify-center rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1]"
+                >
+                  Try once more
                 </button>
               ) : index < questions.length - 1 ? (
                 <button
@@ -700,9 +924,13 @@ export function DailyPractice() {
                   )}
                   {isCorrect
                     ? "Correct"
-                    : `Not quite. Answer: ${current.answer}`}
+                    : (attempts[current.id] ?? 1) < 2
+                      ? "Not quite yet. Use the hint, then try once more."
+                      : `Good review moment. Answer: ${current.answer}`}
                 </p>
-                <p className="mt-3 leading-6">{current.explanation}</p>
+                {isCorrect || (attempts[current.id] ?? 1) >= 2 ? (
+                  <p className="mt-3 leading-6">{current.explanation}</p>
+                ) : null}
                 <div className="mt-4 rounded-2xl bg-white/60 p-4">
                   <p className="flex items-center gap-2 font-semibold">
                     <BookOpenCheck className="size-4" />
@@ -724,10 +952,53 @@ export function DailyPractice() {
           <h2 className="mt-2 font-serif text-3xl font-semibold">
             {correctCount} out of {allQuestions.length} correct
           </h2>
+          <p className="mt-2 text-sm font-semibold text-[#36582e]">
+            First-try fluency: {firstTryCorrectCount} out of{" "}
+            {allQuestions.length}
+          </p>
           <p className="mt-3 leading-6 text-[#53615c]">
             The most useful next step is to explain one tricky question aloud,
             then stop while the session still feels light.
           </p>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl bg-white/70 p-4">
+              <p className="font-semibold text-[#24495a]">Parent read</p>
+              <p className="mt-2 leading-6 text-[#53615c]">
+                {needsReview.length > 0
+                  ? `Review ${needsReview.map((topic) => topicLabels[topic]).join(", ")} next.`
+                  : "No obvious weak spot today. Keep the next session short and confident."}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white/70 p-4">
+              <p className="font-semibold text-[#24495a]">
+                Suggested next focus
+              </p>
+              <p className="mt-2 leading-6 text-[#53615c]">
+                {suggestedReview
+                  ? topicLabels[suggestedReview]
+                  : `${topicLabels[todayTopic]} with one harder story problem`}
+              </p>
+            </div>
+          </div>
+          {sessionHistory.length > 0 ? (
+            <div className="mt-5 rounded-2xl bg-white/70 p-4">
+              <p className="font-semibold text-[#24495a]">Recent practice</p>
+              <div className="mt-3 grid gap-2">
+                {sessionHistory.slice(0, 3).map((record) => (
+                  <p
+                    key={`${record.date}-${record.topic}`}
+                    className="flex flex-wrap justify-between gap-2 rounded-xl bg-[#f7fbf7] px-3 py-2 text-sm text-[#53615c]"
+                  >
+                    <span>{record.date}</span>
+                    <span>{topicLabels[record.topic]}</span>
+                    <span>
+                      {record.correct}/{record.total}
+                    </span>
+                  </p>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <button
             onClick={restart}
             className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1]"
