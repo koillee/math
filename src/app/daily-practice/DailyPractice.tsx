@@ -10,13 +10,14 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type Topic = "multiplication" | "fractions" | "decimals" | "percentages";
 type Stage = "goals" | "lesson" | "practice" | "gugudan" | "summary";
 type Question = {
   id: string;
-  topic: Topic | "gugudan";
+  topic: Topic;
   label: string;
   prompt: string;
   choices: string[];
@@ -42,13 +43,14 @@ type Template = {
 
 const progressKey = "haim-daily-practice-progress-v2";
 
-const topicLabels: Record<Question["topic"], string> = {
-  gugudan: "구구단 finish",
+const topicLabels: Record<Topic, string> = {
   multiplication: "Multiplication & division",
   fractions: "Fractions",
   decimals: "Decimals",
   percentages: "Percentages",
 };
+
+const stageOrder: Stage[] = ["goals", "lesson", "practice", "gugudan"];
 
 const topicLessons: Record<
   Topic,
@@ -58,6 +60,13 @@ const topicLessons: Record<
     steps: string[];
     example: string;
     trap: string;
+    recaps: {
+      title: string;
+      bigIdea: string;
+      steps: string[];
+      example: string;
+      trap: string;
+    }[];
   }
 > = {
   multiplication: {
@@ -71,6 +80,44 @@ const topicLessons: Record<
     ],
     example: "If 7 x 8 = 56, then 56 / 7 = 8 and 56 / 8 = 7.",
     trap: "Do not guess division. Ask which multiplication fact makes the total.",
+    recaps: [
+      {
+        title: "Fact families give free answers",
+        bigIdea:
+          "One multiplication fact can unlock two division facts and a missing-number problem.",
+        steps: [
+          "Start with the multiplication fact.",
+          "Swap the factors to get the turn-around fact.",
+          "Use the total divided by one factor to find the other factor.",
+        ],
+        example: "7 x 8 = 56, so 8 x 7 = 56, 56 / 7 = 8, and 56 / 8 = 7.",
+        trap: "Do not treat division as a new fact to memorize every time.",
+      },
+      {
+        title: "Equal groups tell you what to do",
+        bigIdea:
+          "When a story has the same amount repeated, multiplication finds the total.",
+        steps: [
+          "Circle how many groups there are.",
+          "Underline how many are in each group.",
+          "Multiply groups by group size.",
+        ],
+        example: "6 bags with 8 stickers each means 6 x 8 = 48 stickers.",
+        trap: "Adding 6 + 8 only finds two numbers together, not six equal groups.",
+      },
+      {
+        title: "Missing numbers are hidden division",
+        bigIdea:
+          "A missing factor asks which number makes the multiplication fact true.",
+        steps: [
+          "Read the total at the end.",
+          "Divide the total by the known factor.",
+          "Check by multiplying back.",
+        ],
+        example: "9 x ? = 63 means 63 / 9 = 7, so the missing number is 7.",
+        trap: "Guessing can feel fast, but checking with division is calmer.",
+      },
+    ],
   },
   fractions: {
     goal: "Understand fractions as equal parts and use the denominator first.",
@@ -83,6 +130,44 @@ const topicLessons: Record<
     ],
     example: "3/4 of 20: first 20 / 4 = 5, then 3 x 5 = 15.",
     trap: "Do not look only at the numbers. Check the size of the equal parts.",
+    recaps: [
+      {
+        title: "Denominator first",
+        bigIdea:
+          "The denominator tells how many equal parts make the whole, so it usually tells the first action.",
+        steps: [
+          "Name the whole.",
+          "Split it by the denominator.",
+          "Take the numerator number of parts.",
+        ],
+        example: "3/4 of 20: 20 / 4 = 5, then 3 x 5 = 15.",
+        trap: "Starting with the numerator can hide what the equal parts are.",
+      },
+      {
+        title: "Compare the size of pieces",
+        bigIdea:
+          "With the same whole, more equal slices means each slice is smaller.",
+        steps: [
+          "Check the whole is the same.",
+          "Compare how many equal parts it is split into.",
+          "Use a bar drawing if your eyes are unsure.",
+        ],
+        example: "1/4 is larger than 1/8 because fourths are bigger pieces.",
+        trap: "A bigger denominator does not mean a bigger fraction.",
+      },
+      {
+        title: "Equivalent fractions cover the same amount",
+        bigIdea:
+          "Equivalent fractions can look different but take up the same space on the same whole.",
+        steps: [
+          "Draw two same-length bars.",
+          "Split them in different ways.",
+          "Check whether the shaded amount lines up.",
+        ],
+        example: "1/2 and 2/4 are equal because they both cover half the bar.",
+        trap: "Changing only the top or only the bottom changes the fraction.",
+      },
+    ],
   },
   decimals: {
     goal: "Use place-value columns to compare decimals and scale by 10, 100, or 1000.",
@@ -95,6 +180,44 @@ const topicLessons: Record<
     ],
     example: "0.7 is 0.70, so it is 70 hundredths and greater than 0.56.",
     trap: "More decimal digits does not always mean the number is bigger.",
+    recaps: [
+      {
+        title: "Line up the decimal point",
+        bigIdea:
+          "Decimal places are columns. Lining up the decimal point lines up the place values.",
+        steps: [
+          "Write the numbers one above the other.",
+          "Line up the decimal points.",
+          "Add zeros at the end only if they help you compare.",
+        ],
+        example: "0.7 = 0.70, so 0.70 is greater than 0.56.",
+        trap: "Do not compare 7 and 56 as whole numbers.",
+      },
+      {
+        title: "Decimals are parts of one",
+        bigIdea:
+          "Tenths, hundredths, and thousandths are smaller place-value columns after the decimal point.",
+        steps: [
+          "Say the number using place-value words.",
+          "Find the tenths column first.",
+          "Then compare hundredths and thousandths if needed.",
+        ],
+        example: "0.47 means forty-seven hundredths.",
+        trap: "Reading 0.47 as 'zero point four seven' can hide the place value.",
+      },
+      {
+        title: "Multiplying by 10 moves place value",
+        bigIdea:
+          "When multiplying or dividing by 10, 100, or 1000, digits move through columns.",
+        steps: [
+          "Count how many zeros are in 10, 100, or 1000.",
+          "Move that many place-value columns.",
+          "Check whether the number should become larger or smaller.",
+        ],
+        example: "0.036 x 1000 = 36.",
+        trap: "Just adding zeros can give a very wrong decimal answer.",
+      },
+    ],
   },
   percentages: {
     goal: "Use benchmark percentages and always identify the whole.",
@@ -107,6 +230,44 @@ const topicLessons: Record<
     ],
     example: "25% of 80 means one quarter of 80, so 80 / 4 = 20.",
     trap: "Do not treat the percent number itself as the answer.",
+    recaps: [
+      {
+        title: "Percent means out of 100",
+        bigIdea:
+          "A percent is a fraction with 100 as the whole, so it always needs a whole amount.",
+        steps: [
+          "Ask: percent of what?",
+          "Turn the percent into a benchmark if possible.",
+          "Find the amount from the whole.",
+        ],
+        example: "25% of 80 is one quarter of 80, which is 20.",
+        trap: "25% is not 25 unless the whole is 100.",
+      },
+      {
+        title: "Use friendly benchmarks",
+        bigIdea:
+          "Many percentages become easy when you know 50%, 25%, 10%, and 5%.",
+        steps: [
+          "50% means half.",
+          "25% means one quarter.",
+          "10% means one tenth, and 5% is half of 10%.",
+        ],
+        example: "5% of 60: 10% is 6, so 5% is 3.",
+        trap: "Do not reach for a long method when a benchmark works.",
+      },
+      {
+        title: "Discounts have two answers to watch",
+        bigIdea:
+          "A discount question may ask for the discount amount or the final sale price.",
+        steps: [
+          "Find the discount amount.",
+          "Read whether the question asks for the amount off or final price.",
+          "Subtract the discount from the original price for sale price.",
+        ],
+        example: "25% off HK$40 is HK$10 off, so the sale price is HK$30.",
+        trap: "Stopping at the discount amount when the question asks for sale price.",
+      },
+    ],
   },
 };
 
@@ -135,36 +296,6 @@ function options(answer: number, distractors: number[]) {
         ((Number(left) * 13 + answer) % 7) -
         ((Number(right) * 13 + answer) % 7),
     );
-}
-
-function gugudanQuestion(seed: number): Question {
-  const hardFacts = [
-    [6, 6],
-    [6, 7],
-    [6, 8],
-    [7, 7],
-    [7, 8],
-    [8, 8],
-    [9, 6],
-    [9, 7],
-  ];
-  const [a, b] = pick(hardFacts, seed);
-  const answer = a * b;
-  return {
-    id: `gugudan-${a}-${b}`,
-    topic: "gugudan",
-    label: "Warm-up fact",
-    prompt: `${a} x ${b} = ?`,
-    choices: options(answer, [answer - a, answer + a, answer - b, answer + b]),
-    answer: String(answer),
-    hint:
-      b === 9 || a === 9
-        ? "Use x10, then subtract one group."
-        : "Use a nearby fact or double pattern.",
-    explanation: `${a} x ${b} = ${answer}. This fact supports division and fraction work later.`,
-    parentNote:
-      "Fast recall helps Haim spend more thinking power on the actual problem.",
-  };
 }
 
 const templates: Template[] = [
@@ -482,8 +613,8 @@ const templates: Template[] = [
   },
 ];
 
-function buildDailySet() {
-  const seed = daySeed();
+function buildDailySet(refresh: number) {
+  const seed = daySeed() + refresh * 97;
   const topicOrder: Topic[] = [
     "multiplication",
     "fractions",
@@ -491,6 +622,7 @@ function buildDailySet() {
     "percentages",
   ];
   const todayTopic = topicOrder[seed % topicOrder.length];
+  const lesson = pick(topicLessons[todayTopic].recaps, seed + 23);
   const todayTemplates = templates.filter(
     (template) => template.topic === todayTopic,
   );
@@ -499,7 +631,7 @@ function buildDailySet() {
   );
   return {
     todayTopic,
-    gugudan: gugudanQuestion(seed),
+    lesson,
     questions: [
       todayTemplates[0].build(seed + 1),
       (todayTemplates[1] ?? todayTemplates[0]).build(seed + 2),
@@ -512,8 +644,12 @@ function buildDailySet() {
 }
 
 export function DailyPractice() {
-  const { todayTopic, questions, gugudan } = useMemo(buildDailySet, []);
-  const lesson = topicLessons[todayTopic];
+  const [refresh, setRefresh] = useState(0);
+  const { todayTopic, lesson, questions } = useMemo(
+    () => buildDailySet(refresh),
+    [refresh],
+  );
+  const topicLesson = topicLessons[todayTopic];
   const [stage, setStage] = useState<Stage>("goals");
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -522,13 +658,12 @@ export function DailyPractice() {
   const [showHint, setShowHint] = useState<Record<string, boolean>>({});
   const [sessionHistory, setSessionHistory] = useState<SessionRecord[]>([]);
   const savedSummaryRef = useRef(false);
-  const current = stage === "gugudan" ? gugudan : questions[index];
+  const current = questions[index];
   const selected = answers[current.id] ?? "";
   const isChecked = checked[current.id] ?? false;
   const isCorrect = isChecked && selected === current.answer;
-  const completed =
-    questions.every((question) => checked[question.id]) && checked[gugudan.id];
-  const allQuestions = [...questions, gugudan];
+  const completed = questions.every((question) => checked[question.id]);
+  const allQuestions = questions;
   const correctCount = allQuestions.filter(
     (question) =>
       checked[question.id] && answers[question.id] === question.answer,
@@ -546,8 +681,7 @@ export function DailyPractice() {
           (question) =>
             checked[question.id] && answers[question.id] !== question.answer,
         )
-        .map((question) => question.topic)
-        .filter((topic): topic is Topic => topic !== "gugudan"),
+        .map((question) => question.topic),
     ),
   );
   const suggestedReview =
@@ -606,10 +740,6 @@ export function DailyPractice() {
   }
 
   function next() {
-    if (stage === "gugudan") {
-      setStage("summary");
-      return;
-    }
     if (index < questions.length - 1) {
       setIndex((value) => value + 1);
       return;
@@ -617,8 +747,29 @@ export function DailyPractice() {
     setStage("gugudan");
   }
 
+  function back() {
+    if (stage === "summary") {
+      setStage("gugudan");
+      return;
+    }
+    if (stage === "gugudan") {
+      setStage("practice");
+      setIndex(questions.length - 1);
+      return;
+    }
+    if (stage === "practice" && index > 0) {
+      setIndex((value) => value - 1);
+      return;
+    }
+    const stageIndex = stageOrder.indexOf(stage);
+    if (stageIndex > 0) {
+      setStage(stageOrder[stageIndex - 1]);
+    }
+  }
+
   function restart() {
     savedSummaryRef.current = false;
+    setRefresh((value) => value + 1);
     setStage("goals");
     setIndex(0);
     setAnswers({});
@@ -671,6 +822,15 @@ export function DailyPractice() {
         </p>
       </section>
 
+      {stage !== "goals" ? (
+        <button
+          onClick={back}
+          className="inline-flex items-center gap-2 rounded-full border border-[#d8cdbb] bg-white/80 px-4 py-2 font-semibold text-[#53615c] shadow-sm"
+        >
+          Back
+        </button>
+      ) : null}
+
       {stage === "goals" ? (
         <section className="rounded-[2rem] border border-[#dfd3c0] bg-white/80 p-6 shadow-sm sm:p-8">
           <div className="flex items-start gap-3">
@@ -685,7 +845,7 @@ export function DailyPractice() {
                 {topicLabels[todayTopic]}
               </h2>
               <p className="mt-4 text-lg leading-7 text-[#53615c]">
-                {lesson.goal}
+                {topicLesson.goal}
               </p>
             </div>
           </div>
@@ -716,8 +876,11 @@ export function DailyPractice() {
           <article className="rounded-[2rem] border border-[#dfd3c0] bg-white/80 p-6 shadow-sm sm:p-8">
             <p className="text-sm font-semibold text-[#94652e]">Big idea</p>
             <h2 className="mt-2 font-serif text-4xl font-semibold leading-tight">
-              {lesson.bigIdea}
+              {lesson.title}
             </h2>
+            <p className="mt-4 text-lg leading-7 text-[#53615c]">
+              {lesson.bigIdea}
+            </p>
             <div className="mt-6 grid gap-3">
               {lesson.steps.map((step, position) => (
                 <p
@@ -801,19 +964,6 @@ export function DailyPractice() {
             >
               <div className="flex items-center justify-between gap-3">
                 <p className="font-semibold">Final step</p>
-                {checked[gugudan.id] ? (
-                  <span
-                    className={
-                      answers[gugudan.id] === gugudan.answer
-                        ? "text-[#8fb57f]"
-                        : "text-[#d99b4a]"
-                    }
-                  >
-                    {answers[gugudan.id] === gugudan.answer
-                      ? "Correct"
-                      : "Review"}
-                  </span>
-                ) : null}
               </div>
               <p
                 className={`mt-1 text-sm ${stage === "gugudan" ? "text-[#d8cdbb]" : "text-[#53615c]"}`}
@@ -823,124 +973,152 @@ export function DailyPractice() {
             </button>
           </aside>
 
-          <article className="rounded-[2rem] border border-[#dfd3c0] bg-white/80 p-6 shadow-sm sm:p-8">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-[#94652e]">
-                  {topicLabels[current.topic]}
-                </p>
-                <h2 className="mt-2 font-serif text-4xl font-semibold leading-tight">
-                  {current.prompt}
-                </h2>
-              </div>
-              <span className="rounded-full bg-[#dceaf0] px-4 py-2 text-sm font-semibold text-[#24495a]">
-                {stage === "gugudan"
-                  ? "Final step"
-                  : `${index + 1} of ${questions.length}`}
-              </span>
-            </div>
-
-            <div className="mt-7 grid grid-cols-2 gap-3">
-              {current.choices.map((choice) => (
-                <button
-                  key={choice}
-                  onClick={() => selectAnswer(choice)}
-                  disabled={isChecked}
-                  className={`min-h-20 rounded-2xl border p-4 text-xl font-semibold transition ${
-                    selected === choice
-                      ? "border-[#10211f] bg-[#10211f] text-[#f8efe1]"
-                      : "border-[#d8cdbb] bg-[#fffdf8] hover:border-[#2f6173]"
-                  } ${
-                    isChecked && choice === current.answer
-                      ? "border-[#36582e] bg-[#dfe9d6] text-[#36582e]"
-                      : ""
-                  }`}
-                >
-                  {choice}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                onClick={() =>
-                  setShowHint((all) => ({ ...all, [current.id]: true }))
-                }
-                className="inline-flex items-center gap-2 rounded-full border border-[#d8cdbb] bg-[#fffdf8] px-4 py-2 font-semibold text-[#53615c]"
-              >
-                <Lightbulb className="size-4" />
-                Hint
-              </button>
-              {!isChecked ? (
-                <button
-                  onClick={checkCurrent}
-                  disabled={!selected}
-                  className="inline-flex flex-1 items-center justify-center rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1] disabled:opacity-50"
-                >
-                  Check
-                </button>
-              ) : !isCorrect && (attempts[current.id] ?? 1) < 2 ? (
-                <button
-                  onClick={tryAgain}
-                  className="inline-flex flex-1 items-center justify-center rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1]"
-                >
-                  Try once more
-                </button>
-              ) : index < questions.length - 1 ? (
-                <button
-                  onClick={next}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1]"
-                >
-                  Next
-                  <ArrowRight className="size-4" />
-                </button>
-              ) : !completed ? (
-                <button
-                  onClick={next}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1]"
-                >
-                  {stage === "gugudan" ? "Finish" : "Go to 구구단"}
-                  <ArrowRight className="size-4" />
-                </button>
-              ) : null}
-            </div>
-
-            {showHint[current.id] ? (
-              <p className="mt-5 rounded-2xl bg-[#fff8e9] p-4 leading-6 text-[#754714]">
-                <span className="font-semibold">Hint: </span>
-                {current.hint}
+          {stage === "gugudan" ? (
+            <article className="rounded-[2rem] border border-[#dfd3c0] bg-white/80 p-6 shadow-sm sm:p-8">
+              <p className="text-sm font-semibold text-[#94652e]">
+                구구단 finish
               </p>
-            ) : null}
-
-            {isChecked ? (
-              <div
-                className={`mt-5 rounded-[1.5rem] p-5 ${isCorrect ? "bg-[#edf7e8] text-[#244d32]" : "bg-[#fff3dd] text-[#754714]"}`}
-              >
-                <p className="flex items-center gap-2 font-semibold">
-                  {isCorrect ? (
-                    <CheckCircle2 className="size-5" />
-                  ) : (
-                    <CircleAlert className="size-5" />
-                  )}
-                  {isCorrect
-                    ? "Correct"
-                    : (attempts[current.id] ?? 1) < 2
-                      ? "Not quite yet. Use the hint, then try once more."
-                      : `Good review moment. Answer: ${current.answer}`}
-                </p>
-                {isCorrect || (attempts[current.id] ?? 1) >= 2 ? (
-                  <p className="mt-3 leading-6">{current.explanation}</p>
-                ) : null}
-                <div className="mt-4 rounded-2xl bg-white/60 p-4">
-                  <p className="flex items-center gap-2 font-semibold">
-                    <BookOpenCheck className="size-4" />
-                    Parent note
-                  </p>
-                  <p className="mt-2 leading-6">{current.parentNote}</p>
-                </div>
+              <h2 className="mt-2 font-serif text-4xl font-semibold leading-tight">
+                Finish with focused multiplication-table practice.
+              </h2>
+              <p className="mt-4 text-lg leading-7 text-[#53615c]">
+                Daily Practice is done. Now open the 구구단 room and practise as
+                many facts as you want, with tricks, mixed recall, hard facts,
+                and reverse facts.
+              </p>
+              <div className="mt-7 grid gap-3 sm:grid-cols-2">
+                <Link
+                  href="/gugudan"
+                  className="inline-flex min-h-20 items-center justify-center rounded-2xl bg-[#10211f] px-5 py-4 text-center text-lg font-semibold text-[#f8efe1]"
+                >
+                  Go to 구구단 practice
+                </Link>
+                <button
+                  onClick={() => setStage("summary")}
+                  className="inline-flex min-h-20 items-center justify-center rounded-2xl border border-[#d8cdbb] bg-[#fffdf8] px-5 py-4 text-center text-lg font-semibold text-[#53615c]"
+                >
+                  See today&apos;s summary
+                </button>
               </div>
-            ) : null}
-          </article>
+            </article>
+          ) : (
+            <article className="rounded-[2rem] border border-[#dfd3c0] bg-white/80 p-6 shadow-sm sm:p-8">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#94652e]">
+                    {topicLabels[current.topic]}
+                  </p>
+                  <h2 className="mt-2 font-serif text-4xl font-semibold leading-tight">
+                    {current.prompt}
+                  </h2>
+                </div>
+                <span className="rounded-full bg-[#dceaf0] px-4 py-2 text-sm font-semibold text-[#24495a]">
+                  {index + 1} of {questions.length}
+                </span>
+              </div>
+
+              <div className="mt-7 grid grid-cols-2 gap-3">
+                {current.choices.map((choice) => (
+                  <button
+                    key={choice}
+                    onClick={() => selectAnswer(choice)}
+                    disabled={isChecked}
+                    className={`min-h-20 rounded-2xl border p-4 text-xl font-semibold transition ${
+                      selected === choice
+                        ? "border-[#10211f] bg-[#10211f] text-[#f8efe1]"
+                        : "border-[#d8cdbb] bg-[#fffdf8] hover:border-[#2f6173]"
+                    } ${
+                      isChecked && choice === current.answer
+                        ? "border-[#36582e] bg-[#dfe9d6] text-[#36582e]"
+                        : ""
+                    }`}
+                  >
+                    {choice}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  onClick={() =>
+                    setShowHint((all) => ({ ...all, [current.id]: true }))
+                  }
+                  className="inline-flex items-center gap-2 rounded-full border border-[#d8cdbb] bg-[#fffdf8] px-4 py-2 font-semibold text-[#53615c]"
+                >
+                  <Lightbulb className="size-4" />
+                  Hint
+                </button>
+                {!isChecked ? (
+                  <button
+                    onClick={checkCurrent}
+                    disabled={!selected}
+                    className="inline-flex flex-1 items-center justify-center rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1] disabled:opacity-50"
+                  >
+                    Check
+                  </button>
+                ) : !isCorrect && (attempts[current.id] ?? 1) < 2 ? (
+                  <button
+                    onClick={tryAgain}
+                    className="inline-flex flex-1 items-center justify-center rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1]"
+                  >
+                    Try once more
+                  </button>
+                ) : index < questions.length - 1 ? (
+                  <button
+                    onClick={next}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1]"
+                  >
+                    Next
+                    <ArrowRight className="size-4" />
+                  </button>
+                ) : !completed ? (
+                  <button
+                    onClick={next}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1]"
+                  >
+                    Go to 구구단
+                    <ArrowRight className="size-4" />
+                  </button>
+                ) : null}
+              </div>
+
+              {showHint[current.id] ? (
+                <p className="mt-5 rounded-2xl bg-[#fff8e9] p-4 leading-6 text-[#754714]">
+                  <span className="font-semibold">Hint: </span>
+                  {current.hint}
+                </p>
+              ) : null}
+
+              {isChecked ? (
+                <div
+                  className={`mt-5 rounded-[1.5rem] p-5 ${isCorrect ? "bg-[#edf7e8] text-[#244d32]" : "bg-[#fff3dd] text-[#754714]"}`}
+                >
+                  <p className="flex items-center gap-2 font-semibold">
+                    {isCorrect ? (
+                      <CheckCircle2 className="size-5" />
+                    ) : (
+                      <CircleAlert className="size-5" />
+                    )}
+                    {isCorrect
+                      ? "Correct"
+                      : (attempts[current.id] ?? 1) < 2
+                        ? "Not quite yet. Use the hint, then try once more."
+                        : `Good review moment. Answer: ${current.answer}`}
+                  </p>
+                  {isCorrect || (attempts[current.id] ?? 1) >= 2 ? (
+                    <p className="mt-3 leading-6">{current.explanation}</p>
+                  ) : null}
+                  <div className="mt-4 rounded-2xl bg-white/60 p-4">
+                    <p className="flex items-center gap-2 font-semibold">
+                      <BookOpenCheck className="size-4" />
+                      Parent note
+                    </p>
+                    <p className="mt-2 leading-6">{current.parentNote}</p>
+                  </div>
+                </div>
+              ) : null}
+            </article>
+          )}
         </section>
       ) : null}
 
