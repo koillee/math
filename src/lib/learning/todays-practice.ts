@@ -1,5 +1,6 @@
 import type { DailyPracticeItem, DailyPracticeSession, MathItem, SkillGraph } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { getTutorTopicForItems, isPhase2SchoolAlignedItem, type TutorTopic } from "./daily-tutor";
 import { getNextBestActionState } from "./next-best-action";
 import { getRetentionQueueStateForStudent } from "./retention-queue";
 import { ensureSeedData } from "./seed";
@@ -20,6 +21,7 @@ export type TodaysPracticeState = {
   practiceDate: string;
   session: PracticeSessionWithItems;
   items: PracticeItemWithItem[];
+  tutorTopic: TutorTopic;
   statusLabel: "Not started" | "Completed today";
   isCompleted: boolean;
   completedEvidence: {
@@ -38,6 +40,13 @@ export type TodaysPracticeState = {
       expectedAnswer: string;
       feedback: string;
     }[];
+    parentSummary: {
+      headline: string;
+      topic: string;
+      strengths: string[];
+      focusAreas: string[];
+      recommendedSupport: string;
+    };
   } | null;
 };
 
@@ -109,6 +118,11 @@ function findItem(items: ItemWithSkill[], predicate: (item: ItemWithSkill) => bo
   return [...items].filter(predicate).sort((a, b) => itemTypeRank(a.itemType) - itemTypeRank(b.itemType) || a.sequence - b.sequence || a.itemId.localeCompare(b.itemId))[0] ?? null;
 }
 
+function schoolAlignedRank(item: ItemWithSkill) {
+  const prefixRank = item.itemId.startsWith("pv2-") ? 1 : item.itemId.startsWith("pat2-") ? 2 : item.itemId.startsWith("md2-") ? 3 : item.itemId.startsWith("dec2-") ? 4 : item.itemId.startsWith("pow2-") ? 5 : 20;
+  return prefixRank * 10_000 + item.sequence;
+}
+
 async function generatePracticeItems(studentId: string, excludedItemIds = new Set<string>()): Promise<Candidate[]> {
   const [nextState, retentionState, activeItems, misconceptions, mastery] = await Promise.all([
     getNextBestActionState(),
@@ -121,6 +135,15 @@ async function generatePracticeItems(studentId: string, excludedItemIds = new Se
   const candidates: Candidate[] = [];
   const usedItemIds = new Set<string>(excludedItemIds);
   const usedSkillIds = new Set<string>();
+
+  for (const item of activeItems.filter(isPhase2SchoolAlignedItem).sort((a, b) => schoolAlignedRank(a) - schoolAlignedRank(b) || a.itemId.localeCompare(b.itemId))) {
+    if (candidates.length >= DAILY_PRACTICE_SIZE) break;
+    pushCandidate(candidates, usedItemIds, usedSkillIds, {
+      item,
+      sourceType: "School Focus",
+      reasonChosen: "This matches the current school focus: place value, multiplication/division patterns, and missing-number puzzles.",
+    });
+  }
 
   if (nextState.selectedItem) {
     pushCandidate(candidates, usedItemIds, usedSkillIds, {
@@ -192,7 +215,14 @@ async function generatePracticeItems(studentId: string, excludedItemIds = new Se
 }
 
 async function createTodaysSession(studentId: string, practiceDate: string) {
-  const candidates = await generatePracticeItems(studentId);
+  const recentSessions = await prisma.dailyPracticeSession.findMany({
+    where: { studentId, status: "completed" },
+    include: { items: true },
+    orderBy: { completedAt: "desc" },
+    take: 10,
+  });
+  const recentlyCompletedItemIds = new Set(recentSessions.flatMap((session) => session.items.map((item) => item.itemId)));
+  const candidates = await generatePracticeItems(studentId, recentlyCompletedItemIds);
   const session = await prisma.dailyPracticeSession.create({
     data: {
       studentId,
@@ -216,11 +246,13 @@ export async function getPracticeSessionState(sessionId: string): Promise<Todays
   const session = await loadSession(sessionId);
   if (!session || session.studentId !== student.id) return null;
   const completedEvidence = await completedEvidenceForSession(session);
+  const tutorTopic = getTutorTopicForItems(session.items.map((item) => item.item));
   return {
     studentId: student.id,
     practiceDate: session.practiceDate,
     session,
     items: session.items,
+    tutorTopic,
     statusLabel: session.status === "completed" ? "Completed today" : "Not started",
     isCompleted: session.status === "completed",
     completedEvidence,
@@ -262,6 +294,7 @@ async function completedEvidenceForSession(session: PracticeSessionWithItems) {
   const correctCount = events.filter((event) => event.correctness === 100).length;
   const skillsPractised = [...new Set(events.map((event) => event.skill.microSkill))];
   const lowerScoring = events.filter((event) => event.correctness < 100 || event.explanationScore < 65).slice(0, 2);
+  const tutorTopic = getTutorTopicForItems(session.items.map((item) => item.item));
   const review = session.items.map((sessionItem) => {
     const event = events.find((candidate) => candidate.itemId === sessionItem.itemId);
     if (!event || !event.item) return null;
@@ -291,6 +324,15 @@ async function completedEvidenceForSession(session: PracticeSessionWithItems) {
       ? lowerScoring.map((event) => `${event.skill.microSkill} may need another short review.`)
       : ["Haim added useful practice evidence today.", "Correct answers still need future review before permanent mastery is claimed."],
     review,
+    parentSummary: {
+      headline: `${correctCount}/${events.length || session.items.length} correct in ${tutorTopic.shortTitle.toLowerCase()} practice`,
+      topic: tutorTopic.title,
+      strengths: review.filter((item) => item.isCorrect).slice(0, 3).map((item) => item.title),
+      focusAreas: review.filter((item) => !item.isCorrect).map((item) => item.title),
+      recommendedSupport: review.some((item) => !item.isCorrect)
+        ? `Spend 5 minutes revisiting ${tutorTopic.shortTitle.toLowerCase()}. Ask Haim to explain one missed question aloud, then solve one similar example slowly.`
+        : `Keep the habit light. Haim can do another short set later, but today's ${tutorTopic.shortTitle.toLowerCase()} practice is complete.`,
+    },
   };
 }
 
@@ -309,11 +351,13 @@ export async function getTodaysPracticeState(date = new Date()): Promise<TodaysP
   if (!session) throw new Error("Today's practice session could not be loaded.");
   const completedEvidence = await completedEvidenceForSession(session);
   const isCompleted = session.status === "completed";
+  const tutorTopic = getTutorTopicForItems(session.items.map((item) => item.item));
   return {
     studentId: student.id,
     practiceDate,
     session,
     items: session.items,
+    tutorTopic,
     statusLabel: isCompleted ? "Completed today" : "Not started",
     isCompleted,
     completedEvidence,

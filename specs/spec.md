@@ -36,6 +36,8 @@ Premium calm academic intelligence dashboard: ivory background, ink text, muted 
 ## Feature list
 | Feature | Status | Spec |
 |---|---|---|
+| Haim Daily Tutor Phase 2 teaching-first practice | done | [specs/haim-daily-tutor-phase-2/document.md](specs/haim-daily-tutor-phase-2/document.md) |
+| Answer grading safety and item-bank validation | done | [specs/answer-grading-safety/document.md](specs/answer-grading-safety/document.md) |
 | Haim Daily Phase 1 child-first practice experience | done | [specs/haim-daily-phase-1/document.md](specs/haim-daily-phase-1/document.md) |
 | Daily practice item-by-item answer review | done | [specs/daily-practice-review/document.md](specs/daily-practice-review/document.md) |
 | iPad performance feedback and standalone web app support | done | [specs/ipad-performance-and-pwa/document.md](specs/ipad-performance-and-pwa/document.md) |
@@ -56,4 +58,4 @@ Premium calm academic intelligence dashboard: ivory background, ink text, muted 
 
 
 ## Status
-MVP v1 implemented and QA-hardened. Sprint F expanded the seeded curriculum foundation beyond FDP into Number & Operations and Ratio, Proportion & Rates. Diagnostic updates now use a JSON API with client-side pending/error state and duplicate-attempt protection before writing evidence. Sprint B added a persistent structured item bank while preserving the current Year 6 FDP diagnostic behaviour. Sprint C added a next-best-action flow that turns recommendations into one targeted activity. Sprint D added a retention queue for explainable review timing, Review/Retention item selection, retention practice evidence, and timeline/report integration. Sprint E-lite added an English-only Today’s Practice flow for simple daily home use.
+MVP v1 implemented and QA-hardened. Sprint F expanded the seeded curriculum foundation beyond FDP into Number & Operations and Ratio, Proportion & Rates. Diagnostic updates now use a JSON API with client-side pending/error state and duplicate-attempt protection before writing evidence. Sprint B added a persistent structured item bank while preserving the current Year 6 FDP diagnostic behaviour. Sprint C added a next-best-action flow that turns recommendations into one targeted activity. Sprint D added a retention queue for explainable review timing, Review/Retention item selection, retention practice evidence, and timeline/report integration. Sprint E-lite added an English-only Today’s Practice flow for simple daily home use. The grading-safety sprint closes a reported numeric near-miss bug before Haim continues the 1–2 week practice pilot. Phase 2 turns the daily experience into a teaching-first tutor loop aligned with the current school focus on place value, multiplication/division patterns, and missing-number puzzles. Phase 2 is implemented and validated with lesson-first flow, multiple-choice final answers, explicit retry feedback, simplified parent summary, updated smoke coverage, and browser QA screenshots.

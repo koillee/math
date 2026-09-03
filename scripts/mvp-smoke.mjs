@@ -52,7 +52,8 @@ async function loadTodayItemIds() {
   const response = await fetch(`${baseUrl}/today`, { redirect: "follow" });
   if (!response.ok) throw new Error(`/today returned HTTP ${response.status}`);
   const html = await response.text();
-  return [...html.matchAll(/name="answer-([^"]+)"/g)].map((match) => match[1]);
+  const itemIds = html.match(/data-item-ids="([^"]+)"/)?.[1]?.split(",").filter(Boolean) ?? [];
+  return itemIds.length ? itemIds : [...html.matchAll(/name="answer-([^"]+)"/g)].map((match) => match[1]);
 }
 
 async function submitTodayPractice(itemIds) {
@@ -132,7 +133,7 @@ await assertPage("/items", "Total seeded items");
 await assertPage("/items", "Misconception Repair");
 await assertPage("/items", "Number &amp; Operations");
 await assertPage("/items", "Ratio, Proportion &amp; Rates");
-await assertPage("/today", "Five problems for today");
+await assertPage("/today", "Today’s tutor");
 const todayIdsA = await loadTodayItemIds();
 const todayIdsB = await loadTodayItemIds();
 if (todayIdsA.length !== 5) throw new Error(`/today should generate 5 practice items, found ${todayIdsA.length}`);
@@ -170,8 +171,9 @@ await assertPage("/evidence", "Retention Practice");
 await assertPage("/timeline", "Next Best Action");
 await assertPage("/timeline", "Retention Practice");
 await assertPage("/evidence", "MISC-FRA-002");
-await assertPage("/parent-report", "Recommended home support");
-await assertPage("/parent-report", "Retention / review note");
+await assertPage("/parent-report", "Recommended support");
+await assertPage("/parent-report", "Recurring mistakes");
+await assertPage("/parent-report", "Topics practised");
 await assertPage("/tutor", "Retention queue summary");
 await assertPage("/timeline", "Misconception signals");
 
@@ -193,7 +195,7 @@ const extraPayload = await extraResponse.json();
 if (!extraResponse.ok || !extraPayload.sessionId) throw new Error(`extra practice creation failed: ${JSON.stringify(extraPayload)}`);
 const extraPage = await fetch(`${baseUrl}/practice?sessionId=${extraPayload.sessionId}`);
 const extraHtml = await extraPage.text();
-if (!extraPage.ok || !extraHtml.includes("Today’s maths") || !extraHtml.includes("Question")) throw new Error("extra practice page did not show one-at-a-time five-question flow");
+if (!extraPage.ok || !extraHtml.includes("Today’s tutor") || !extraHtml.includes("Mini lesson")) throw new Error("extra practice page did not show lesson-first tutor flow");
 const checkResponse = await fetch(`${baseUrl}/api/practice/check`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId: todayIdsA[0], answer: "0", explanation: "", representation: "none", confidence: 2 }) });
 const checkPayload = await checkResponse.json();
 if (!checkResponse.ok || typeof checkPayload.correct !== "boolean" || !checkPayload.expectedAnswer) throw new Error(`single-answer check failed: ${JSON.stringify(checkPayload)}`);
@@ -201,6 +203,6 @@ console.log("✓ Haim Daily extra five-question set and immediate answer check w
 await assertPage("/evidence", "Daily Practice");
 await assertPage("/timeline", "Daily Practice");
 await assertPage("/tutor", "Today’s practice result");
-await assertPage("/parent-report", "Today’s practice");
+await assertPage("/parent-report", "Latest daily tutor session");
 
 console.log("MVP smoke test passed.");

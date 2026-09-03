@@ -1,76 +1,183 @@
-import { AppShell, Card, PageHeader, Pill } from "@/components/masteryos/chrome";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import {
+  AppShell,
+  Card,
+  PageHeader,
+  Pill,
+} from "@/components/masteryos/chrome";
 import { getMvpState } from "@/lib/learning/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function ParentReportPage() {
-  const { reports, recommendations, student } = await getMvpState();
+  const { reports, recommendations, student, evidenceEvents } =
+    await getMvpState();
   const report = reports[0];
   const recommendation = recommendations[0];
-  const strengths = (report?.strengths as string[] | undefined) ?? [];
-  const focusAreas = (report?.focusAreas as string[] | undefined) ?? [];
-  const misconceptionNotes = (report?.misconceptionNotes as string[] | undefined) ?? [];
-  const retentionStatus = (report?.retentionStatus as {
-    summary?: string;
-    dueNowCount?: number;
-    dueSoonCount?: number;
-    stableCount?: number;
-    needsMoreEvidenceCount?: number;
-    topReviewSkill?: string | null;
-    topReviewItemId?: string | null;
-    topReviewItemTitle?: string | null;
-    dueNow?: string[];
-    dueSoon?: string[];
-    stable?: string[];
-    latestDailyPractice?: { practiceDate?: string; summary?: string | null; completedAt?: string | Date | null } | null;
-    suggestedHomeSupport?: string;
-  } | undefined) ?? null;
+  const retentionStatus =
+    (report?.retentionStatus as
+      | {
+          latestDailyPractice?: {
+            practiceDate?: string;
+            summary?: string | null;
+            completedAt?: string | Date | null;
+          } | null;
+          suggestedHomeSupport?: string;
+        }
+      | undefined) ?? null;
+  const dailyEvents = evidenceEvents.filter(
+    (event) => event.eventType === "Daily Practice",
+  );
+  const recentDailyEvents = dailyEvents.slice(0, 35);
+  const topicCounts = new Map<string, number>();
+  const mistakeCounts = new Map<string, number>();
+
+  for (const event of recentDailyEvents) {
+    topicCounts.set(
+      event.skill.microSkill,
+      (topicCounts.get(event.skill.microSkill) ?? 0) + 1,
+    );
+    if (event.correctness < 100)
+      mistakeCounts.set(
+        event.skill.microSkill,
+        (mistakeCounts.get(event.skill.microSkill) ?? 0) + 1,
+      );
+  }
+
+  const topicsPractised = [...topicCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const recurringMistakes = [...mistakeCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4);
+  const correctRecent = recentDailyEvents.filter(
+    (event) => event.correctness === 100,
+  ).length;
+  const recentAccuracy = recentDailyEvents.length
+    ? Math.round((correctRecent / recentDailyEvents.length) * 100)
+    : null;
+  const topMistake = recurringMistakes[0]?.[0];
+  const recommendedSupport = topMistake
+    ? `Spend 5–10 minutes on ${topMistake}. Ask Haim to explain one worked example aloud, then solve one similar problem slowly.`
+    : (retentionStatus?.suggestedHomeSupport ??
+      report?.recommendedHomeSupport ??
+      recommendation?.parentFriendlyRationale ??
+      "Keep the routine light: one short tutor session a day is enough.");
+
   return (
-    <AppShell active="/parent-report">
-      <PageHeader eyebrow="Parent Report" title="Plain-language progress summary"><p>This page translates learning intelligence into parent-friendly language. It is not a grade report.</p></PageHeader>
+    <AppShell active="/parent-report" mode="simple">
+      <PageHeader eyebrow="Parent Report" title="Simple parent summary">
+        <p>
+          Use this during the pilot to see what Haim practised, recurring
+          mistakes, and one practical way to support her at home. Internal
+          evidence, mastery, retention, and item-bank details stay in owner
+          tools.
+        </p>
+      </PageHeader>
+
       <Card className="bg-[#fffaf2]">
-        <div className="flex flex-wrap justify-between gap-4"><div><p className="text-sm text-[#64716c]">Student</p><h3 className="text-2xl font-semibold">{student.name}</h3></div><Pill tone="ink">Year 6 Maths</Pill></div>
-        <p className="mt-5 text-xl leading-8 text-[#263632]">{report?.summary ?? "No report yet. Complete the diagnostic first so the system can create a useful parent summary."}</p>
+        <div className="flex flex-wrap justify-between gap-4">
+          <div>
+            <p className="text-sm text-[#64716c]">Student</p>
+            <h3 className="text-2xl font-semibold">{student.name}</h3>
+          </div>
+          <Pill tone="ink">Year 6 Maths</Pill>
+        </div>
+        <p className="mt-5 text-xl leading-8 text-[#263632]">
+          {recentDailyEvents.length
+            ? `Recent daily tutor work: ${correctRecent}/${recentDailyEvents.length} questions correct${recentAccuracy === null ? "" : ` (${recentAccuracy}%)`}. Treat this as a learning signal, not a grade.`
+            : (report?.summary ??
+              "No daily tutor session has been completed yet. Once Haim finishes a session, this page will show a practical parent summary.")}
+        </p>
       </Card>
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        <Card><h3 className="mb-3 text-lg font-semibold">Current strengths</h3>{strengths.length ? <ul className="space-y-2">{strengths.map((s)=><li key={s} className="rounded-2xl bg-[#edf3e6] p-3 text-sm">{s}</li>)}</ul> : <p className="text-[#64716c]">Strengths will appear after diagnostic evidence is collected.</p>}</Card>
-        <Card><h3 className="mb-3 text-lg font-semibold">Current focus areas</h3>{focusAreas.length ? <ul className="space-y-2">{focusAreas.map((s)=><li key={s} className="rounded-2xl bg-[#f6f0e5] p-3 text-sm">{s}</li>)}</ul> : <p className="text-[#64716c]">No focus areas yet.</p>}</Card>
-      </div>
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        <Card><h3 className="mb-3 text-lg font-semibold">Ideas we are checking</h3>{misconceptionNotes.length ? <ul className="space-y-2">{misconceptionNotes.map((s)=><li key={s} className="rounded-2xl bg-[#f4dfbd] p-3 text-sm">{s}</li>)}</ul> : <p className="text-[#64716c]">No strong pattern has been detected yet.</p>}</Card>
-        <Card><h3 className="mb-3 text-lg font-semibold">Recommended home support</h3><p className="leading-7 text-[#53615c]">{report?.recommendedHomeSupport ?? recommendation?.parentFriendlyRationale ?? "After the first diagnostic, this area will suggest a short, parent-friendly way to support learning at home."}</p></Card>
+
+      <div className="mt-5 grid gap-5 lg:grid-cols-3">
+        <Card>
+          <h3 className="mb-3 text-lg font-semibold">Topics practised</h3>
+          {topicsPractised.length ? (
+            <ul className="space-y-2">
+              {topicsPractised.map(([topic, count]) => (
+                <li
+                  key={topic}
+                  className="rounded-2xl bg-[#f7fbf7] p-3 text-sm"
+                >
+                  <span className="font-semibold">{topic}</span>
+                  <br />
+                  {count} recent question{count === 1 ? "" : "s"}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[#64716c]">No daily tutor data yet.</p>
+          )}
+        </Card>
+
+        <Card>
+          <h3 className="mb-3 text-lg font-semibold">Recurring mistakes</h3>
+          {recurringMistakes.length ? (
+            <ul className="space-y-2">
+              {recurringMistakes.map(([topic, count]) => (
+                <li
+                  key={topic}
+                  className="rounded-2xl bg-[#fff3dd] p-3 text-sm"
+                >
+                  <span className="font-semibold">{topic}</span>
+                  <br />
+                  Missed {count} time{count === 1 ? "" : "s"}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[#64716c]">
+              No repeated missed topic from recent daily practice.
+            </p>
+          )}
+        </Card>
+
+        <Card>
+          <h3 className="mb-3 text-lg font-semibold">Recommended support</h3>
+          <p className="leading-7 text-[#53615c]">{recommendedSupport}</p>
+        </Card>
       </div>
 
       <Card className="mt-5 border-[#caa05f] bg-[#fff7e8]">
-        <h3 className="mb-3 text-lg font-semibold">Today’s practice</h3>
+        <h3 className="mb-3 text-lg font-semibold">
+          Latest daily tutor session
+        </h3>
         {retentionStatus?.latestDailyPractice ? (
           <div>
-            <p className="text-sm text-[#64716c]">Latest completed daily practice: {retentionStatus.latestDailyPractice.practiceDate}</p>
-            <p className="mt-2 text-xl leading-8 text-[#263632]">{retentionStatus.latestDailyPractice.summary ?? "Daily practice was completed and saved to the learning profile."}</p>
+            <p className="text-sm text-[#64716c]">
+              Latest completed practice:{" "}
+              {retentionStatus.latestDailyPractice.practiceDate}
+            </p>
+            <p className="mt-2 text-xl leading-8 text-[#263632]">
+              {retentionStatus.latestDailyPractice.summary ??
+                "Daily tutor work was completed and saved."}
+            </p>
           </div>
-        ) : <p className="text-[#64716c]">No daily practice has been completed yet. Start from Today to generate the first short practice set.</p>}
+        ) : (
+          <p className="text-[#64716c]">
+            No daily tutor session has been completed yet. Start from Home to
+            generate the first short tutor session.
+          </p>
+        )}
       </Card>
 
-      <Card className="mt-5 border-[#cfded7] bg-[#f7fbf7]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h3 className="mb-2 text-lg font-semibold">Retention / review note</h3>
-            <p className="max-w-3xl leading-7 text-[#53615c]">{retentionStatus?.summary ?? "Retention notes will appear after the system has enough evidence to decide what should be reviewed."}</p>
-            {retentionStatus?.topReviewSkill ? <p className="mt-2 text-sm text-[#64716c]">Start with <span className="font-semibold text-[#10211f]">{retentionStatus.topReviewSkill}</span>{retentionStatus.topReviewItemTitle ? ` using “${retentionStatus.topReviewItemTitle}”.` : "."}</p> : null}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Pill tone={(retentionStatus?.dueNowCount ?? 0) ? "red" : "green"}>Due now {retentionStatus?.dueNowCount ?? 0}</Pill>
-            <Pill tone={(retentionStatus?.dueSoonCount ?? 0) ? "amber" : "green"}>Due soon {retentionStatus?.dueSoonCount ?? 0}</Pill>
-            <Pill tone="green">Stable {retentionStatus?.stableCount ?? 0}</Pill>
-          </div>
-        </div>
-        {retentionStatus?.dueNow?.length || retentionStatus?.dueSoon?.length ? (
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl bg-[#fffdf8] p-4"><p className="mb-2 font-semibold">Review now</p>{retentionStatus.dueNow?.length ? <ul className="space-y-2 text-sm text-[#53615c]">{retentionStatus.dueNow.map((item)=><li key={item}>• {item}</li>)}</ul> : <p className="text-sm text-[#64716c]">No urgent review item.</p>}</div>
-            <div className="rounded-2xl bg-[#fffdf8] p-4"><p className="mb-2 font-semibold">Review soon</p>{retentionStatus.dueSoon?.length ? <ul className="space-y-2 text-sm text-[#53615c]">{retentionStatus.dueSoon.map((item)=><li key={item}>• {item}</li>)}</ul> : <p className="text-sm text-[#64716c]">No near-term review item.</p>}</div>
-          </div>
-        ) : null}
-      </Card>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/"
+          className="rounded-[1.5rem] border border-[#dfd3c0] bg-white/75 p-5 font-semibold text-[#10211f] shadow-sm transition hover:-translate-y-0.5"
+        >
+          Back to Haim’s home <ArrowRight className="mt-3 size-5" />
+        </Link>
+        <Link
+          href="/today"
+          className="rounded-[1.5rem] border border-[#dfd3c0] bg-white/75 p-5 font-semibold text-[#10211f] shadow-sm transition hover:-translate-y-0.5"
+        >
+          Open today’s review <ArrowRight className="mt-3 size-5" />
+        </Link>
+      </div>
     </AppShell>
   );
 }

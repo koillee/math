@@ -8,6 +8,7 @@
     "build": "prisma generate; BUILD_DIR=.next-build next build",
     "build:local": "BUILD_DIR=.next-build next build",
     "lint": "bunx biome lint --write && bunx tsc --noEmit",
+    "test:item-bank": "bun scripts/validate-item-bank.ts",
     "test:mvp": "node scripts/mvp-smoke.mjs",
     "format": "bunx biome format --write"
   },
