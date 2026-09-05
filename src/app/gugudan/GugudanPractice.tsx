@@ -11,7 +11,7 @@ import {
   Target,
   TimerReset,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type FactStatus = "new" | "learning" | "strong" | "mastered";
 type Mode = "learn" | "focus" | "mixed" | "reverse" | "hard";
@@ -34,6 +34,7 @@ type Prompt = {
 const FACTS = Array.from({ length: 9 }, (_, a) =>
   Array.from({ length: 9 }, (_, b) => ({ a: a + 1, b: b + 1 })),
 ).flat();
+const PRACTICE_FACTS = FACTS.filter((fact) => fact.a <= fact.b);
 
 const EASY_FACTORS = new Set([1, 2, 5, 10]);
 const HARD_FACT_IDS = new Set(["6x6", "6x7", "6x8", "7x7", "7x8", "8x8"]);
@@ -157,8 +158,9 @@ export function buildPrompt(
   focus: number,
   progress: Record<string, FactProgress>,
   step: number,
+  previousAnswer: number | null = null,
 ): Prompt {
-  const scored = FACTS.map((fact) => {
+  const scored = PRACTICE_FACTS.map((fact) => {
     const id = factId(fact.a, fact.b);
     const current = progress[id];
     const status = statusFor(current);
@@ -200,8 +202,13 @@ export function buildPrompt(
           ((right.a * 9 + right.b + step) % 13),
     );
 
-  const selected =
-    pool[step % Math.max(1, Math.min(pool.length, 12))] ?? scored[0];
+  const windowSize = Math.max(1, Math.min(pool.length, 12));
+  const poolWindow = pool.slice(0, windowSize);
+  let selected = poolWindow[step % windowSize] ?? scored[0];
+  if (previousAnswer !== null && selected.a * selected.b === previousAnswer) {
+    selected =
+      poolWindow.find((fact) => fact.a * fact.b !== previousAnswer) ?? selected;
+  }
   const answer = selected.a * selected.b;
   if (mode === "reverse") {
     const hideFirst = step % 2 === 0;
@@ -247,16 +254,26 @@ export function GugudanPractice() {
   const [step, setStep] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [checked, setChecked] = useState(false);
+  const [previousAnswer, setPreviousAnswer] = useState<number | null>(null);
+  const progressRef = useRef<Record<string, FactProgress>>({});
 
-  useEffect(() => setProgress(loadProgress()), []);
+  useEffect(() => {
+    const savedProgress = loadProgress();
+    progressRef.current = savedProgress;
+    setProgress(savedProgress);
+  }, []);
   useEffect(() => {
     if (typeof window !== "undefined")
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    progressRef.current = progress;
   }, [progress]);
 
   const prompt = useMemo(
-    () => validatePrompt(buildPrompt(mode, focus, progress, step)),
-    [mode, focus, progress, step],
+    () =>
+      validatePrompt(
+        buildPrompt(mode, focus, progressRef.current, step, previousAnswer),
+      ),
+    [mode, focus, previousAnswer, step],
   );
   const options = useMemo(
     () => makeOptions(prompt.answer, prompt.a, prompt.b),
@@ -275,6 +292,7 @@ export function GugudanPractice() {
   function chooseMode(nextMode: Mode) {
     setMode(nextMode);
     setStep(0);
+    setPreviousAnswer(null);
     setSelected(null);
     setChecked(false);
   }
@@ -299,6 +317,7 @@ export function GugudanPractice() {
   }
 
   function next() {
+    setPreviousAnswer(prompt.answer);
     setSelected(null);
     setChecked(false);
     setStep((value) => value + 1);
@@ -308,6 +327,7 @@ export function GugudanPractice() {
     setSelected(null);
     setChecked(false);
     setStep(0);
+    setPreviousAnswer(null);
   }
 
   return (

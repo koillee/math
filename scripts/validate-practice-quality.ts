@@ -37,9 +37,16 @@ for (let seed = 20260901; seed < 20261050; seed += 1) {
 
 for (const mode of modes) {
   for (const focus of [2, 3, 4, 5, 6, 7, 8, 9]) {
+    let previousAnswer: number | null = null;
     for (let step = 0; step < 120; step += 1) {
-      const prompt = validatePrompt(buildPrompt(mode, focus, {}, step));
+      const prompt = validatePrompt(
+        buildPrompt(mode, focus, {}, step, previousAnswer),
+      );
       const choices = makeOptions(prompt.answer, prompt.a, prompt.b);
+      if (mode !== "reverse" && previousAnswer === prompt.answer) {
+        throw new Error(`${prompt.id} repeats answer ${prompt.answer}`);
+      }
+      previousAnswer = prompt.answer;
       if (choices.length !== 4) {
         throw new Error(`${prompt.id} has ${choices.length} choices`);
       }
