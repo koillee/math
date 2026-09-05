@@ -22,6 +22,7 @@ type Question = {
   prompt: string;
   choices: string[];
   answer: string;
+  answerType?: "exact" | "fraction-equivalent";
   hint: string;
   explanation: string;
   parentNote: string;
@@ -288,7 +289,20 @@ function pick<T>(items: readonly T[], seed: number) {
 }
 
 function options(answer: number, distractors: number[]) {
-  return Array.from(new Set([answer, ...distractors]))
+  const unique = Array.from(
+    new Set(
+      [answer, ...distractors].filter(
+        (value) => Number.isFinite(value) && value > 0,
+      ),
+    ),
+  );
+  for (let offset = 1; unique.length < 4 && offset < 20; offset += 1) {
+    const lower = answer - offset;
+    const higher = answer + offset;
+    if (lower > 0 && !unique.includes(lower)) unique.push(lower);
+    if (!unique.includes(higher)) unique.push(higher);
+  }
+  return unique
     .slice(0, 4)
     .map(String)
     .sort(
@@ -296,6 +310,42 @@ function options(answer: number, distractors: number[]) {
         ((Number(left) * 13 + answer) % 7) -
         ((Number(right) * 13 + answer) % 7),
     );
+}
+
+function parseFraction(value: string) {
+  const match = value.trim().match(/^(\d+)\/(\d+)$/);
+  if (!match) return null;
+  const numerator = Number(match[1]);
+  const denominator = Number(match[2]);
+  if (denominator === 0) return null;
+  return { numerator, denominator };
+}
+
+function sameFraction(left: string, right: string) {
+  const a = parseFraction(left);
+  const b = parseFraction(right);
+  if (!a || !b) return false;
+  return a.numerator * b.denominator === b.numerator * a.denominator;
+}
+
+export function isAnswerCorrect(question: Question, selected: string) {
+  if (question.answerType === "fraction-equivalent") {
+    return sameFraction(question.answer, selected);
+  }
+  return selected === question.answer;
+}
+
+function validateQuestion(question: Question) {
+  const uniqueChoices = Array.from(new Set(question.choices));
+  const correctChoices = uniqueChoices.filter((choice) =>
+    isAnswerCorrect(question, choice),
+  );
+  if (correctChoices.length !== 1 || correctChoices[0] !== question.answer) {
+    throw new Error(
+      `Invalid choices for ${question.id}: expected only ${question.answer}, got ${correctChoices.join(", ")}`,
+    );
+  }
+  return { ...question, choices: uniqueChoices };
 }
 
 const templates: Template[] = [
@@ -417,7 +467,7 @@ const templates: Template[] = [
     label: "Equivalent fractions",
     build(seed) {
       const cases = [
-        ["1/2", "2/4", "3/4", "4/8"],
+        ["1/2", "2/4", "3/4", "1/3"],
         ["2/3", "4/6", "2/6", "3/6"],
         ["3/5", "6/10", "3/10", "5/10"],
         ["1/4", "2/8", "4/8", "3/8"],
@@ -430,6 +480,7 @@ const templates: Template[] = [
         prompt: `Which fraction is equal to ${base}?`,
         choices: [answer, distractorA, distractorB, "Cannot tell"].sort(),
         answer,
+        answerType: "fraction-equivalent",
         hint: "Equivalent fractions cover the same amount of the same whole.",
         explanation: `${base} and ${answer} name the same part of the whole because the numerator and denominator changed by the same scale.`,
         parentNote:
@@ -613,8 +664,7 @@ const templates: Template[] = [
   },
 ];
 
-function buildDailySet(refresh: number) {
-  const seed = daySeed() + refresh * 97;
+export function buildDailySetFromSeed(seed: number) {
   const topicOrder: Topic[] = [
     "multiplication",
     "fractions",
@@ -639,8 +689,12 @@ function buildDailySet(refresh: number) {
       reviewTemplates[(seed + 3) % reviewTemplates.length].build(seed + 3),
       reviewTemplates[(seed + 5) % reviewTemplates.length].build(seed + 5),
       reviewTemplates[(seed + 7) % reviewTemplates.length].build(seed + 7),
-    ],
+    ].map(validateQuestion),
   };
+}
+
+function buildDailySet(refresh: number) {
+  return buildDailySetFromSeed(daySeed() + refresh * 97);
 }
 
 export function DailyPractice() {
@@ -661,17 +715,18 @@ export function DailyPractice() {
   const current = questions[index];
   const selected = answers[current.id] ?? "";
   const isChecked = checked[current.id] ?? false;
-  const isCorrect = isChecked && selected === current.answer;
+  const isCorrect = isChecked && isAnswerCorrect(current, selected);
   const completed = questions.every((question) => checked[question.id]);
   const allQuestions = questions;
   const correctCount = allQuestions.filter(
     (question) =>
-      checked[question.id] && answers[question.id] === question.answer,
+      checked[question.id] &&
+      isAnswerCorrect(question, answers[question.id] ?? ""),
   ).length;
   const firstTryCorrectCount = allQuestions.filter(
     (question) =>
       checked[question.id] &&
-      answers[question.id] === question.answer &&
+      isAnswerCorrect(question, answers[question.id] ?? "") &&
       (attempts[question.id] ?? 1) === 1,
   ).length;
   const needsReview = Array.from(
@@ -679,7 +734,8 @@ export function DailyPractice() {
       allQuestions
         .filter(
           (question) =>
-            checked[question.id] && answers[question.id] !== question.answer,
+            checked[question.id] &&
+            !isAnswerCorrect(question, answers[question.id] ?? ""),
         )
         .map((question) => question.topic),
     ),
@@ -732,7 +788,7 @@ export function DailyPractice() {
   ]);
 
   function selectAnswer(answer: string) {
-    if (isChecked && selected === current.answer) return;
+    if (isChecked && isAnswerCorrect(current, selected)) return;
     setAnswers((all) => ({ ...all, [current.id]: answer }));
     if (isChecked) {
       setChecked((all) => ({ ...all, [current.id]: false }));
@@ -925,7 +981,8 @@ export function DailyPractice() {
           <aside className="space-y-3">
             {questions.map((question, position) => {
               const done = checked[question.id];
-              const right = done && answers[question.id] === question.answer;
+              const right =
+                done && isAnswerCorrect(question, answers[question.id] ?? "");
               return (
                 <button
                   key={question.id}
@@ -1028,7 +1085,7 @@ export function DailyPractice() {
                         ? "border-[#10211f] bg-[#10211f] text-[#f8efe1]"
                         : "border-[#d8cdbb] bg-[#fffdf8] hover:border-[#2f6173]"
                     } ${
-                      isChecked && choice === current.answer
+                      isChecked && isAnswerCorrect(current, choice)
                         ? "border-[#36582e] bg-[#dfe9d6] text-[#36582e]"
                         : ""
                     }`}

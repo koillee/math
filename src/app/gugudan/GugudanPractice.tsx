@@ -104,7 +104,7 @@ function trickFor(a: number, b: number) {
   return "Use mirror facts and nearby facts to reduce memory work.";
 }
 
-function makeOptions(answer: number, a: number, b: number) {
+export function makeOptions(answer: number, a: number, b: number) {
   const candidates = [
     answer,
     answer + a,
@@ -120,6 +120,12 @@ function makeOptions(answer: number, a: number, b: number) {
     const option = n * Math.max(a, b);
     if (!unique.includes(option)) unique.push(option);
   }
+  for (let offset = 1; unique.length < 4 && offset <= 20; offset += 1) {
+    const lower = answer - offset;
+    const higher = answer + offset;
+    if (lower > 0 && !unique.includes(lower)) unique.push(lower);
+    if (higher <= 100 && !unique.includes(higher)) unique.push(higher);
+  }
   return unique
     .slice(0, 4)
     .sort(
@@ -128,7 +134,25 @@ function makeOptions(answer: number, a: number, b: number) {
     );
 }
 
-function buildPrompt(
+export function validatePrompt(prompt: Prompt) {
+  const expected =
+    prompt.mode === "reverse"
+      ? prompt.question.includes("÷")
+        ? prompt.a
+        : prompt.b
+      : prompt.a * prompt.b;
+  const choices = makeOptions(prompt.answer, prompt.a, prompt.b);
+  if (
+    prompt.answer !== expected ||
+    !choices.includes(prompt.answer) ||
+    new Set(choices).size !== 4
+  ) {
+    throw new Error(`Invalid 구구단 prompt: ${prompt.id}`);
+  }
+  return prompt;
+}
+
+export function buildPrompt(
   mode: Mode,
   focus: number,
   progress: Record<string, FactProgress>,
@@ -231,7 +255,7 @@ export function GugudanPractice() {
   }, [progress]);
 
   const prompt = useMemo(
-    () => buildPrompt(mode, focus, progress, step),
+    () => validatePrompt(buildPrompt(mode, focus, progress, step)),
     [mode, focus, progress, step],
   );
   const options = useMemo(
