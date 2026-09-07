@@ -1,6 +1,14 @@
 "use client";
 
 import {
+  DAILY_PROGRESS_KEY,
+  type DailyPracticeRecord,
+  LEGACY_DAILY_PROGRESS_KEY,
+  type PracticeItemRecord,
+  type PracticeTopic,
+  topicLabels,
+} from "@/lib/learning/practice-progress";
+import {
   ArrowRight,
   BookOpenCheck,
   CheckCircle2,
@@ -13,7 +21,7 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type Topic = "multiplication" | "fractions" | "decimals" | "percentages";
+type Topic = PracticeTopic;
 type Stage = "goals" | "lesson" | "practice" | "gugudan" | "summary";
 type Question = {
   id: string;
@@ -28,27 +36,10 @@ type Question = {
   parentNote: string;
 };
 
-type SessionRecord = {
-  date: string;
-  topic: Topic;
-  total: number;
-  correct: number;
-  needsReview: Topic[];
-};
-
 type Template = {
   topic: Topic;
   label: string;
   build: (seed: number) => Question;
-};
-
-const progressKey = "haim-daily-practice-progress-v2";
-
-const topicLabels: Record<Topic, string> = {
-  multiplication: "Multiplication & division",
-  fractions: "Fractions",
-  decimals: "Decimals",
-  percentages: "Percentages",
 };
 
 const stageOrder: Stage[] = ["goals", "lesson", "practice", "gugudan"];
@@ -118,6 +109,30 @@ const topicLessons: Record<
         example: "9 x ? = 63 means 63 / 9 = 7, so the missing number is 7.",
         trap: "Guessing can feel fast, but checking with division is calmer.",
       },
+      {
+        title: "Arrays make multiplication visible",
+        bigIdea:
+          "Rows and columns show why multiplication is equal groups arranged neatly.",
+        steps: [
+          "Count the rows.",
+          "Count how many are in each row.",
+          "Multiply rows by columns to find the total.",
+        ],
+        example: "5 rows of 9 seats means 5 x 9 = 45 seats.",
+        trap: "Do not count only one row when the question asks for the whole array.",
+      },
+      {
+        title: "Division can mean groups or group size",
+        bigIdea:
+          "A division story asks either how many groups fit or how many are in each group.",
+        steps: [
+          "Find the total.",
+          "Find the known group number or group size.",
+          "Use the matching multiplication fact to answer.",
+        ],
+        example: "48 stickers in bags of 6 means 48 / 6 = 8 bags.",
+        trap: "Always check what the answer represents in the story.",
+      },
     ],
   },
   fractions: {
@@ -167,6 +182,31 @@ const topicLessons: Record<
         ],
         example: "1/2 and 2/4 are equal because they both cover half the bar.",
         trap: "Changing only the top or only the bottom changes the fraction.",
+      },
+      {
+        title: "Simplifying keeps the value",
+        bigIdea:
+          "Simplifying divides the numerator and denominator by the same number so the fraction stays equal.",
+        steps: [
+          "Look for a common factor.",
+          "Divide the top and bottom by that factor.",
+          "Check the new fraction covers the same amount.",
+        ],
+        example: "4/8 simplifies to 1/2 because both 4 and 8 divide by 4.",
+        trap: "Dividing only the numerator changes the fraction.",
+      },
+      {
+        title: "Fractions can live on a number line",
+        bigIdea:
+          "A fraction is also a number, so it has a position between whole numbers.",
+        steps: [
+          "Find the whole interval from 0 to 1.",
+          "Split it into denominator-sized equal jumps.",
+          "Count numerator jumps from zero.",
+        ],
+        example:
+          "3/4 is the third jump when 0 to 1 is split into four equal parts.",
+        trap: "Unequal jumps make the number line misleading.",
       },
     ],
   },
@@ -218,6 +258,28 @@ const topicLessons: Record<
         example: "0.036 x 1000 = 36.",
         trap: "Just adding zeros can give a very wrong decimal answer.",
       },
+      {
+        title: "Money helps decimals make sense",
+        bigIdea: "Dollars and cents are decimals: hundredths are like cents.",
+        steps: [
+          "Line up the decimal point.",
+          "Add or subtract dollars with dollars and cents with cents.",
+          "Check the answer has sensible money place value.",
+        ],
+        example: "HK$4.50 + HK$2.35 = HK$6.85.",
+        trap: "Writing 4.5 + 2.35 as 2.80 ignores the dollars column.",
+      },
+      {
+        title: "Zero can hold an important place",
+        bigIdea: "A zero inside a decimal can hold a place-value column open.",
+        steps: [
+          "Read the decimal slowly.",
+          "Notice zeros between non-zero digits.",
+          "Compare column by column.",
+        ],
+        example: "2.05 is two and five hundredths, not two and five tenths.",
+        trap: "Dropping the zero in 2.05 changes how the number feels.",
+      },
     ],
   },
   percentages: {
@@ -268,6 +330,29 @@ const topicLessons: Record<
         example: "25% off HK$40 is HK$10 off, so the sale price is HK$30.",
         trap: "Stopping at the discount amount when the question asks for sale price.",
       },
+      {
+        title: "Percent, fraction, and decimal are connected",
+        bigIdea: "Many common percentages have fraction and decimal partners.",
+        steps: [
+          "50% is 1/2 and 0.5.",
+          "25% is 1/4 and 0.25.",
+          "10% is 1/10 and 0.1.",
+        ],
+        example: "25% of 60 is the same as 1/4 of 60, which is 15.",
+        trap: "Do not switch forms unless the whole stays the same.",
+      },
+      {
+        title: "Find the whole before calculating",
+        bigIdea:
+          "The same percent can mean different amounts when the whole changes.",
+        steps: [
+          "Underline the whole.",
+          "Choose a benchmark strategy.",
+          "Check whether the answer is reasonable compared with the whole.",
+        ],
+        example: "10% of 30 is 3, but 10% of 90 is 9.",
+        trap: "A percent answer without a whole is incomplete.",
+      },
     ],
   },
 };
@@ -282,6 +367,31 @@ function daySeed() {
 function todayKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function loadPracticeHistory() {
+  try {
+    const saved = window.localStorage.getItem(DAILY_PROGRESS_KEY);
+    if (saved) return JSON.parse(saved).slice(0, 20) as DailyPracticeRecord[];
+    const legacy = window.localStorage.getItem(LEGACY_DAILY_PROGRESS_KEY);
+    if (!legacy) return [];
+    return (JSON.parse(legacy) as Partial<DailyPracticeRecord>[])
+      .filter((record) => record.date && record.topic)
+      .map((record, index) => ({
+        id: `legacy-${record.date}-${index}`,
+        date: String(record.date),
+        completedAt: String(record.completedAt ?? record.date),
+        topic: record.topic as Topic,
+        lessonTitle: "Earlier daily practice",
+        total: Number(record.total ?? 0),
+        correct: Number(record.correct ?? 0),
+        firstTryCorrect: Number(record.correct ?? 0),
+        needsReview: (record.needsReview ?? []) as Topic[],
+        items: [],
+      }));
+  } catch {
+    return [];
+  }
 }
 
 function pick<T>(items: readonly T[], seed: number) {
@@ -346,6 +456,22 @@ function validateQuestion(question: Question) {
     );
   }
   return { ...question, choices: uniqueChoices };
+}
+
+function rotateTemplates(source: Template[], seed: number, count: number) {
+  const selected: Template[] = [];
+  for (
+    let offset = 0;
+    selected.length < Math.min(count, source.length) &&
+    offset < source.length * 3;
+    offset += 1
+  ) {
+    const template = source[Math.abs(seed + offset * 3) % source.length];
+    if (!selected.some((item) => item.label === template.label)) {
+      selected.push(template);
+    }
+  }
+  return selected;
 }
 
 const templates: Template[] = [
@@ -432,6 +558,67 @@ const templates: Template[] = [
     },
   },
   {
+    topic: "multiplication",
+    label: "Division story",
+    build(seed) {
+      const cases = [
+        [48, 6, "stickers", "bags"],
+        [56, 7, "cheer bows", "boxes"],
+        [72, 8, "craft beads", "bracelets"],
+        [63, 9, "taekwondo badges", "rows"],
+      ] as const;
+      const [total, groups, item, container] = pick(cases, seed + 21);
+      const answer = total / groups;
+      return {
+        id: `division-story-${total}-${groups}`,
+        topic: "multiplication",
+        label: "Division story",
+        prompt: `${total} ${item} are shared equally into ${groups} ${container}. How many are in each ${container.slice(0, -1)}?`,
+        choices: options(answer, [
+          groups,
+          answer + 1,
+          answer - 1,
+          total - groups,
+        ]),
+        answer: String(answer),
+        hint: `Ask which number times ${groups} makes ${total}.`,
+        explanation: `${total} split into ${groups} equal groups is ${answer}, because ${groups} x ${answer} = ${total}.`,
+        parentNote:
+          "Ask Haim to name whether she is finding the group size or the number of groups.",
+      };
+    },
+  },
+  {
+    topic: "multiplication",
+    label: "Array model",
+    build(seed) {
+      const cases = [
+        [5, 9, "chairs"],
+        [6, 7, "drawing squares"],
+        [4, 8, "tiles"],
+        [7, 6, "stage spots"],
+      ] as const;
+      const [rows, columns, item] = pick(cases, seed + 25);
+      const answer = rows * columns;
+      return {
+        id: `array-${rows}-${columns}`,
+        topic: "multiplication",
+        label: "Array model",
+        prompt: `There are ${rows} rows with ${columns} ${item} in each row. How many ${item} altogether?`,
+        choices: options(answer, [
+          rows + columns,
+          answer - rows,
+          answer + columns,
+          rows * (columns - 1),
+        ]),
+        answer: String(answer),
+        hint: "Rows and columns make an array, so multiply.",
+        explanation: `${rows} rows of ${columns} is ${rows} x ${columns} = ${answer}.`,
+        parentNote: "Arrays help connect multiplication to area later.",
+      };
+    },
+  },
+  {
     topic: "fractions",
     label: "Fraction of an amount",
     build(seed) {
@@ -459,6 +646,57 @@ const templates: Template[] = [
         hint: `First find 1/${den} by doing ${whole} / ${den}.`,
         explanation: `${whole} / ${den} = ${unit}, so ${num}/${den} is ${num} x ${unit} = ${answer}.`,
         parentNote: "Ask: what does the denominator tell us to do first?",
+      };
+    },
+  },
+  {
+    topic: "fractions",
+    label: "Simplify fractions",
+    build(seed) {
+      const cases = [
+        ["4/8", "1/2", "3/4", "4/4"],
+        ["6/9", "2/3", "3/6", "6/3"],
+        ["8/12", "2/3", "3/4", "2/4"],
+        ["10/15", "2/3", "5/10", "3/5"],
+      ] as const;
+      const [base, answer, distractorA, distractorB] = pick(cases, seed + 27);
+      return {
+        id: `fraction-simplify-${base}`,
+        topic: "fractions",
+        label: "Simplify fractions",
+        prompt: `What is ${base} in simplest form?`,
+        choices: [answer, distractorA, distractorB, "Cannot simplify"].sort(),
+        answer,
+        answerType: "fraction-equivalent",
+        hint: "Divide the numerator and denominator by the same common factor.",
+        explanation: `${base} simplifies to ${answer}. The value stays the same because both parts are scaled together.`,
+        parentNote:
+          "Ask Haim what common factor works for both numerator and denominator.",
+      };
+    },
+  },
+  {
+    topic: "fractions",
+    label: "Number line",
+    build(seed) {
+      const cases = [
+        ["2/4", "1/2", "0", "1"],
+        ["3/4", "3/4", "1/4", "1/2"],
+        ["4/5", "4/5", "1/5", "3/5"],
+        ["2/3", "2/3", "1/3", "3/3"],
+      ] as const;
+      const [jump, answer, distractorA, distractorB] = pick(cases, seed + 29);
+      return {
+        id: `fraction-number-line-${jump}`,
+        topic: "fractions",
+        label: "Number line",
+        prompt: `On a number line from 0 to 1, where do you land after ${jump} of the whole?`,
+        choices: [answer, distractorA, distractorB, "2"].sort(),
+        answer,
+        answerType: "fraction-equivalent",
+        hint: "Split the space from 0 to 1 into equal jumps.",
+        explanation: `${jump} means that exact fraction of the whole interval from 0 to 1.`,
+        parentNote: "If unsure, draw a line from 0 to 1 and mark equal jumps.",
       };
     },
   },
@@ -570,6 +808,67 @@ const templates: Template[] = [
   },
   {
     topic: "decimals",
+    label: "Decimal subtraction",
+    build(seed) {
+      const cases = [
+        ["5.00", "2.35", "2.65"],
+        ["4.70", "1.25", "3.45"],
+        ["8.05", "0.50", "7.55"],
+        ["3.60", "1.08", "2.52"],
+      ] as const;
+      const [left, right, answer] = pick(cases, seed + 31);
+      return {
+        id: `decimal-subtract-${left}-${right}`,
+        topic: "decimals",
+        label: "Decimal subtraction",
+        prompt: `Calculate ${left} - ${right}.`,
+        choices: [
+          answer,
+          String(Number(answer) + 1),
+          String(Number(answer) - 0.1),
+          left.replace(".", ""),
+        ]
+          .filter(
+            (choice, position, all) =>
+              Number(choice) > 0 && all.indexOf(choice) === position,
+          )
+          .slice(0, 4)
+          .sort(),
+        answer,
+        hint: "Line up decimal points and regroup by place value if needed.",
+        explanation: `${left} - ${right} = ${answer}. Dollars/cents thinking can help: subtract hundredths with hundredths.`,
+        parentNote:
+          "Subtraction with decimals is a good place to slow down and line up columns.",
+      };
+    },
+  },
+  {
+    topic: "decimals",
+    label: "Place value",
+    build(seed) {
+      const cases = [
+        ["0.47", "47 hundredths", "47 tenths", "4 hundredths"],
+        ["2.05", "2 and 5 hundredths", "2 and 5 tenths", "25 hundredths"],
+        ["0.308", "308 thousandths", "38 hundredths", "308 tenths"],
+        ["6.4", "6 and 4 tenths", "6 and 4 hundredths", "64 hundredths"],
+      ] as const;
+      const [value, answer, distractorA, distractorB] = pick(cases, seed + 33);
+      return {
+        id: `decimal-place-${value}`,
+        topic: "decimals",
+        label: "Place value",
+        prompt: `Which phrase correctly describes ${value}?`,
+        choices: [answer, distractorA, distractorB, "Cannot tell"].sort(),
+        answer,
+        hint: "Read the final digit by its place-value column.",
+        explanation: `${value} is read as ${answer}. Place-value words help prevent digit-size mistakes.`,
+        parentNote:
+          "Ask Haim to say the decimal in words before comparing or calculating.",
+      };
+    },
+  },
+  {
+    topic: "decimals",
     label: "Powers of 10",
     build(seed) {
       const cases = [
@@ -662,6 +961,62 @@ const templates: Template[] = [
       };
     },
   },
+  {
+    topic: "percentages",
+    label: "Percent conversion",
+    build(seed) {
+      const cases = [
+        ["50%", "1/2", "0.5", "1/5"],
+        ["25%", "1/4", "0.25", "1/2"],
+        ["10%", "1/10", "0.1", "1/100"],
+        ["75%", "3/4", "0.75", "1/4"],
+      ] as const;
+      const [percent, answer, decimal, distractor] = pick(cases, seed + 35);
+      return {
+        id: `percent-convert-${percent}`,
+        topic: "percentages",
+        label: "Percent conversion",
+        prompt: `Which fraction matches ${percent}?`,
+        choices: [answer, decimal, distractor, "Cannot tell"].sort(),
+        answer,
+        answerType: "fraction-equivalent",
+        hint: "Percent means out of 100, then simplify if possible.",
+        explanation: `${percent} is equivalent to ${answer}. It can also be written as ${decimal}.`,
+        parentNote:
+          "Ask Haim to connect the percent, fraction, and decimal form.",
+      };
+    },
+  },
+  {
+    topic: "percentages",
+    label: "Find the whole",
+    build(seed) {
+      const cases = [
+        [10, 6, 60],
+        [25, 12, 48],
+        [50, 35, 70],
+        [20, 14, 70],
+      ] as const;
+      const [percent, part, answer] = pick(cases, seed + 37);
+      return {
+        id: `percent-whole-${percent}-${part}`,
+        topic: "percentages",
+        label: "Find the whole",
+        prompt: `${part} is ${percent}% of what number?`,
+        choices: options(answer, [
+          part + percent,
+          part * 10,
+          answer / 2,
+          answer + part,
+        ]),
+        answer: String(answer),
+        hint: "Use the benchmark percent to undo the calculation.",
+        explanation: `${percent}% of ${answer} is ${part}, so the whole is ${answer}.`,
+        parentNote:
+          "Finding the whole is harder than finding a percent of a number, so encourage a slow check.",
+      };
+    },
+  },
 ];
 
 export function buildDailySetFromSeed(seed: number) {
@@ -679,17 +1034,15 @@ export function buildDailySetFromSeed(seed: number) {
   const reviewTemplates = templates.filter(
     (template) => template.topic !== todayTopic,
   );
+  const dailyTemplates = rotateTemplates(todayTemplates, seed + 1, 3);
+  const mixedTemplates = rotateTemplates(reviewTemplates, seed + 11, 3);
   return {
     todayTopic,
     lesson,
-    questions: [
-      todayTemplates[0].build(seed + 1),
-      (todayTemplates[1] ?? todayTemplates[0]).build(seed + 2),
-      (todayTemplates[2] ?? todayTemplates[0]).build(seed + 4),
-      reviewTemplates[(seed + 3) % reviewTemplates.length].build(seed + 3),
-      reviewTemplates[(seed + 5) % reviewTemplates.length].build(seed + 5),
-      reviewTemplates[(seed + 7) % reviewTemplates.length].build(seed + 7),
-    ].map(validateQuestion),
+    questions: [...dailyTemplates, ...mixedTemplates]
+      .slice(0, 6)
+      .map((template, position) => template.build(seed + position * 7 + 1))
+      .map(validateQuestion),
   };
 }
 
@@ -710,7 +1063,9 @@ export function DailyPractice() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [attempts, setAttempts] = useState<Record<string, number>>({});
   const [showHint, setShowHint] = useState<Record<string, boolean>>({});
-  const [sessionHistory, setSessionHistory] = useState<SessionRecord[]>([]);
+  const [sessionHistory, setSessionHistory] = useState<DailyPracticeRecord[]>(
+    [],
+  );
   const savedSummaryRef = useRef(false);
   const current = questions[index];
   const selected = answers[current.id] ?? "";
@@ -747,41 +1102,61 @@ export function DailyPractice() {
       .find((topic) => topic !== todayTopic);
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(progressKey);
-      if (saved) {
-        setSessionHistory(JSON.parse(saved).slice(0, 10));
-      }
-    } catch {
-      setSessionHistory([]);
-    }
+    setSessionHistory(loadPracticeHistory());
   }, []);
 
   useEffect(() => {
     if (!(stage === "summary" || completed) || savedSummaryRef.current) return;
     savedSummaryRef.current = true;
-    const record: SessionRecord = {
+    const items: PracticeItemRecord[] = allQuestions.map((question) => {
+      const selectedAnswer = answers[question.id] ?? "";
+      return {
+        id: question.id,
+        topic: question.topic,
+        label: question.label,
+        prompt: question.prompt,
+        answer: question.answer,
+        selected: selectedAnswer,
+        correct: isAnswerCorrect(question, selectedAnswer),
+        attempts: attempts[question.id] ?? 0,
+      };
+    });
+    const record: DailyPracticeRecord = {
+      id: `${todayKey()}-${todayTopic}-${refresh}`,
       date: todayKey(),
+      completedAt: new Date().toISOString(),
       topic: todayTopic,
+      lessonTitle: lesson.title,
       total: allQuestions.length,
       correct: correctCount,
+      firstTryCorrect: firstTryCorrectCount,
       needsReview,
+      items,
     };
     const nextHistory = [
       record,
       ...sessionHistory.filter((item) => item.date !== record.date),
-    ].slice(0, 10);
+    ].slice(0, 20);
     setSessionHistory(nextHistory);
     try {
-      window.localStorage.setItem(progressKey, JSON.stringify(nextHistory));
+      window.localStorage.setItem(
+        DAILY_PROGRESS_KEY,
+        JSON.stringify(nextHistory),
+      );
     } catch {
       // Local progress is helpful, but the practice should still work without it.
     }
   }, [
     allQuestions.length,
+    allQuestions,
+    answers,
+    attempts,
     completed,
     correctCount,
+    firstTryCorrectCount,
+    lesson.title,
     needsReview,
+    refresh,
     sessionHistory,
     stage,
     todayTopic,
@@ -841,7 +1216,7 @@ export function DailyPractice() {
       [current.id]: (all[current.id] ?? 0) + 1,
     }));
     setChecked((all) => ({ ...all, [current.id]: true }));
-    if (selected !== current.answer) {
+    if (!isAnswerCorrect(current, selected)) {
       setShowHint((all) => ({ ...all, [current.id]: true }));
     }
   }

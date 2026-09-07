@@ -12,6 +12,17 @@ const modes = ["focus", "mixed", "reverse", "hard"] as const;
 
 for (let seed = 20260901; seed < 20261050; seed += 1) {
   const dailySet = buildDailySetFromSeed(seed);
+  if (dailySet.questions.length !== 6) {
+    throw new Error(`Seed ${seed} created ${dailySet.questions.length} questions`);
+  }
+  const topicAlignedQuestions = dailySet.questions.filter(
+    (question) => question.topic === dailySet.todayTopic,
+  );
+  if (topicAlignedQuestions.length < 3) {
+    throw new Error(
+      `Seed ${seed} only created ${topicAlignedQuestions.length} questions for ${dailySet.todayTopic}`,
+    );
+  }
   for (const question of dailySet.questions) {
     if (question.choices.length !== 4) {
       throw new Error(
