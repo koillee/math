@@ -9,11 +9,17 @@ import {
 } from "../src/app/gugudan/GugudanPractice";
 
 const modes = ["focus", "mixed", "reverse", "hard"] as const;
+const dailyPrompts = new Set<string>();
+let dailyPromptCount = 0;
 
-for (let seed = 20260901; seed < 20261050; seed += 1) {
+for (let seed = 20260901; seed < 20261401; seed += 1) {
   const dailySet = buildDailySetFromSeed(seed);
   if (dailySet.questions.length !== 6) {
     throw new Error(`Seed ${seed} created ${dailySet.questions.length} questions`);
+  }
+  const sessionPrompts = new Set(dailySet.questions.map((question) => question.prompt));
+  if (sessionPrompts.size !== dailySet.questions.length) {
+    throw new Error(`Seed ${seed} repeated a prompt inside one session`);
   }
   const topicAlignedQuestions = dailySet.questions.filter(
     (question) => question.topic === dailySet.todayTopic,
@@ -44,6 +50,16 @@ for (let seed = 20260901; seed < 20261050; seed += 1) {
       );
     }
   }
+  for (const question of dailySet.questions) {
+    dailyPrompts.add(question.prompt);
+    dailyPromptCount += 1;
+  }
+}
+
+if (dailyPrompts.size / dailyPromptCount < 0.82) {
+  throw new Error(
+    `Daily bank variety is too low: ${dailyPrompts.size}/${dailyPromptCount} unique prompts`,
+  );
 }
 
 for (const mode of modes) {
