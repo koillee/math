@@ -19,6 +19,7 @@ import {
   Target,
 } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type Topic = PracticeTopic;
@@ -1903,6 +1904,300 @@ function buildDailySet(refresh: number) {
   return buildDailySetFromSeed(daySeed() + refresh * 97);
 }
 
+function extractFirstFraction(text: string) {
+  const match = text.match(/(\d+)\/(\d+)/);
+  if (!match) return null;
+  return {
+    numerator: Number(match[1]),
+    denominator: Number(match[2]),
+  };
+}
+
+function extractFirstDecimal(text: string) {
+  const match = text.match(/\d+\.\d+/);
+  return match?.[0] ?? null;
+}
+
+function extractPercent(text: string) {
+  const match = text.match(/(\d+)%/);
+  return match ? Number(match[1]) : null;
+}
+
+function numbersFromId(id: string) {
+  return (id.match(/\d+/g) ?? []).map(Number);
+}
+
+function VisualShell({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[#cfded7] bg-[#f7fbf7]">
+      <div className="border-b border-[#d9e7df] bg-white/70 px-4 py-2 text-sm font-semibold text-[#24495a]">
+        {title}
+      </div>
+      <div className="p-4">{children}</div>
+    </div>
+  );
+}
+
+function DotArray({
+  rows,
+  columns,
+  label,
+}: {
+  rows: number;
+  columns: number;
+  label: string;
+}) {
+  const shownRows = Math.min(rows, 12);
+  const shownColumns = Math.min(columns, 12);
+  const dotClass =
+    shownRows * shownColumns > 80
+      ? "size-2.5 rounded-full bg-[#2f6173] shadow-sm"
+      : "size-3.5 rounded-full bg-[#2f6173] shadow-sm sm:size-4";
+  const dots = Array.from(
+    { length: shownRows * shownColumns },
+    (_, position) => ({
+      id: `dot-r${Math.floor(position / shownColumns)}-c${position % shownColumns}`,
+    }),
+  );
+  return (
+    <div className="space-y-3">
+      <div
+        className="grid w-fit gap-1.5"
+        style={{
+          gridTemplateColumns: `repeat(${shownColumns}, minmax(0, 1fr))`,
+        }}
+      >
+        {dots.map((dot) => (
+          <span key={dot.id} className={dotClass} />
+        ))}
+      </div>
+      <p className="text-sm font-semibold text-[#41504b]">{label}</p>
+    </div>
+  );
+}
+
+function FractionBar({
+  numerator,
+  denominator,
+  label,
+}: {
+  numerator: number;
+  denominator: number;
+  label: string;
+}) {
+  const safeDenominator = Math.max(1, Math.min(denominator, 20));
+  const safeNumerator = Math.min(numerator, safeDenominator);
+  const parts = Array.from({ length: safeDenominator }, (_, position) => ({
+    id: `fraction-part-${position + 1}-of-${safeDenominator}`,
+    isShaded: position < safeNumerator,
+  }));
+  return (
+    <div className="space-y-3">
+      <div
+        className="grid overflow-hidden rounded-lg border border-[#8aa79c]"
+        style={{
+          gridTemplateColumns: `repeat(${safeDenominator}, minmax(0, 1fr))`,
+        }}
+      >
+        {parts.map((part) => (
+          <span
+            key={part.id}
+            className={`h-12 border-r border-white last:border-r-0 ${
+              part.isShaded ? "bg-[#d99b4a]" : "bg-white"
+            }`}
+          />
+        ))}
+      </div>
+      <p className="text-sm font-semibold text-[#41504b]">{label}</p>
+    </div>
+  );
+}
+
+function NumberLine({
+  numerator,
+  denominator,
+}: {
+  numerator: number;
+  denominator: number;
+}) {
+  const safeDenominator = Math.max(2, Math.min(denominator, 20));
+  const position = `${Math.min(100, (numerator / denominator) * 100)}%`;
+  const ticks = Array.from({ length: safeDenominator + 1 }, (_, tick) => ({
+    id: `tick-${tick}-of-${safeDenominator}`,
+    left: `${(tick / safeDenominator) * 100}%`,
+  }));
+  return (
+    <div className="px-2 py-4">
+      <div className="relative h-12">
+        <div className="absolute left-0 right-0 top-5 h-1 rounded-full bg-[#cfded7]" />
+        {ticks.map((tick) => (
+          <span
+            key={tick.id}
+            className="absolute top-3 h-5 w-px bg-[#2f6173]"
+            style={{ left: tick.left }}
+          />
+        ))}
+        <span
+          className="absolute top-0 size-7 -translate-x-1/2 rounded-full bg-[#d99b4a] ring-4 ring-white"
+          style={{ left: position }}
+        />
+        <span className="absolute left-0 top-10 text-xs font-semibold text-[#41504b]">
+          0
+        </span>
+        <span className="absolute right-0 top-10 text-xs font-semibold text-[#41504b]">
+          1
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function DecimalChart({ value }: { value: string }) {
+  const [whole, decimal = ""] = value.split(".");
+  const digits = decimal.padEnd(3, "0").slice(0, 3).split("");
+  const columns = [
+    ["ones", whole],
+    ["tenths", digits[0] ?? "0"],
+    ["hundredths", digits[1] ?? "0"],
+    ["thousandths", digits[2] ?? "0"],
+  ];
+  return (
+    <div className="grid grid-cols-4 overflow-hidden rounded-xl border border-[#cfded7] bg-white text-center">
+      {columns.map(([label, digit]) => (
+        <div key={label} className="border-r border-[#e7ded0] last:border-r-0">
+          <p className="bg-[#f8efe1] px-2 py-2 text-xs font-semibold text-[#754714]">
+            {label}
+          </p>
+          <p className="py-4 text-2xl font-bold text-[#10211f]">{digit}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PercentGrid({ percent }: { percent: number }) {
+  const shaded = Math.max(0, Math.min(100, Math.round(percent)));
+  const squares = Array.from({ length: 100 }, (_, position) => ({
+    id: `percent-row-${Math.floor(position / 10)}-col-${position % 10}`,
+    isShaded: position < shaded,
+  }));
+  return (
+    <div className="space-y-3">
+      <div className="grid w-fit grid-cols-10 gap-1">
+        {squares.map((square) => (
+          <span
+            key={square.id}
+            className={`size-2.5 rounded-sm ${
+              square.isShaded ? "bg-[#2f6173]" : "bg-white"
+            } border border-[#d9e7df]`}
+          />
+        ))}
+      </div>
+      <p className="text-sm font-semibold text-[#41504b]">
+        {shaded} out of 100 parts
+      </p>
+    </div>
+  );
+}
+
+function LessonVisual({ topic }: { topic: Topic }) {
+  if (topic === "multiplication") {
+    return (
+      <VisualShell title="Visual model">
+        <DotArray rows={4} columns={6} label="4 equal groups of 6 make 24" />
+      </VisualShell>
+    );
+  }
+  if (topic === "fractions") {
+    return (
+      <VisualShell title="Visual model">
+        <FractionBar numerator={3} denominator={4} label="3 of 4 equal parts" />
+      </VisualShell>
+    );
+  }
+  if (topic === "decimals") {
+    return (
+      <VisualShell title="Visual model">
+        <DecimalChart value="2.05" />
+      </VisualShell>
+    );
+  }
+  return (
+    <VisualShell title="Visual model">
+      <PercentGrid percent={25} />
+    </VisualShell>
+  );
+}
+
+function QuestionVisual({ question }: { question: Question }) {
+  if (question.topic === "multiplication") {
+    const [first = 4, second = 6, third] = numbersFromId(question.id);
+    const rows = question.label === "Division story" ? second : first;
+    const columns =
+      question.label === "Division story" ? Number(question.answer) : second;
+    const total =
+      question.label === "Division story" && third ? first : rows * columns;
+    return (
+      <VisualShell title="See the structure">
+        <DotArray
+          rows={rows}
+          columns={columns}
+          label={`${rows} x ${columns} = ${total}`}
+        />
+      </VisualShell>
+    );
+  }
+
+  if (question.topic === "fractions") {
+    const fraction =
+      extractFirstFraction(question.prompt) ??
+      extractFirstFraction(question.answer);
+    if (!fraction) return null;
+    if (question.label === "Number line") {
+      return (
+        <VisualShell title="See the structure">
+          <NumberLine
+            numerator={fraction.numerator}
+            denominator={fraction.denominator}
+          />
+        </VisualShell>
+      );
+    }
+    return (
+      <VisualShell title="See the structure">
+        <FractionBar
+          numerator={fraction.numerator}
+          denominator={fraction.denominator}
+          label={`${fraction.numerator}/${fraction.denominator} of one whole`}
+        />
+      </VisualShell>
+    );
+  }
+
+  if (question.topic === "decimals") {
+    const decimal = extractFirstDecimal(question.prompt) ?? question.answer;
+    return (
+      <VisualShell title="See the structure">
+        <DecimalChart value={decimal} />
+      </VisualShell>
+    );
+  }
+
+  const percent = extractPercent(question.prompt);
+  if (percent === null) return null;
+  return (
+    <VisualShell title="See the structure">
+      <PercentGrid percent={percent} />
+    </VisualShell>
+  );
+}
+
 export function DailyPractice() {
   const [refresh, setRefresh] = useState(0);
   const { todayTopic, lesson, questions } = useMemo(
@@ -2195,6 +2490,9 @@ export function DailyPractice() {
             </div>
             <div className="rounded-[2rem] border border-[#cfded7] bg-white/80 p-6">
               <p className="font-semibold text-[#24495a]">Picture it</p>
+              <div className="mt-4">
+                <LessonVisual topic={todayTopic} />
+              </div>
               <p className="mt-3 leading-6 text-[#41504b]">{lessonVisualCue}</p>
             </div>
             <div className="rounded-[2rem] border border-[#dfd3c0] bg-[#f8efe1] p-6">
@@ -2314,6 +2612,10 @@ export function DailyPractice() {
                 <span className="rounded-full bg-[#dceaf0] px-4 py-2 text-sm font-semibold text-[#24495a]">
                   {index + 1} of {questions.length}
                 </span>
+              </div>
+
+              <div className="mt-6">
+                <QuestionVisual question={current} />
               </div>
 
               <div className="mt-7 grid grid-cols-2 gap-3">
