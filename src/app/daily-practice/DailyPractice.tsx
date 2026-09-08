@@ -24,6 +24,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 type Topic = PracticeTopic;
 type Stage = "goals" | "lesson" | "practice" | "gugudan" | "summary";
+type Difficulty = "Warm-up" | "Core" | "Stretch";
 type Question = {
   id: string;
   topic: Topic;
@@ -55,6 +56,69 @@ type LessonRecap = {
 };
 
 const stageOrder: Stage[] = ["goals", "lesson", "practice", "gugudan"];
+
+const friendlyFractions = [
+  [1, 2],
+  [1, 3],
+  [2, 3],
+  [1, 4],
+  [3, 4],
+  [1, 5],
+  [2, 5],
+  [3, 5],
+  [4, 5],
+  [1, 6],
+  [5, 6],
+  [1, 8],
+  [3, 8],
+  [5, 8],
+  [7, 8],
+  [1, 10],
+  [3, 10],
+  [7, 10],
+  [9, 10],
+  [1, 12],
+  [5, 12],
+  [7, 12],
+  [11, 12],
+] as const;
+
+const gentleSimplifyFractions = friendlyFractions.filter(
+  ([, denominator]) => denominator <= 8,
+);
+
+const corePercentBenchmarks = [
+  [5, 20],
+  [10, 10],
+  [20, 5],
+  [25, 4],
+  [30, 10],
+  [40, 5],
+  [50, 2],
+  [60, 5],
+  [75, 4],
+  [80, 5],
+  [90, 10],
+] as const;
+
+const gentleFindWholePercents = [
+  [10, 10],
+  [20, 5],
+  [25, 4],
+  [50, 2],
+  [75, 4],
+] as const;
+
+const gentleDiscountPercents = [
+  [10, 10],
+  [20, 5],
+  [25, 4],
+  [50, 2],
+] as const;
+
+const corePercentConversions = [
+  5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95,
+] as const;
 
 const topicLessons: Record<
   Topic,
@@ -1155,6 +1219,8 @@ const templates: Template[] = [
           `If ${a} x ${b} = ${total}, what is ${total} / ${divideByA ? a : b}?`,
           `${a} x ${b} makes ${total}. Which number completes ${total} / ${divideByA ? a : b}?`,
           `Use the fact family for ${a}, ${b}, and ${total}: ${total} / ${divideByA ? a : b} = ?`,
+          `Since ${a} x ${b} = ${total}, what factor is left when ${total} is divided by ${divideByA ? a : b}?`,
+          `Complete the matching division fact: ${total} / ${divideByA ? a : b} = ?`,
         ],
         seed,
         105,
@@ -1197,11 +1263,21 @@ const templates: Template[] = [
       const size = 4 + spread(seed, 113, 9);
       const item = spreadPick(items, seed, 115);
       const answer = groups * size;
+      const prompt = spreadPick(
+        [
+          `Haim has ${groups} groups of ${size} ${item}. How many ${item} altogether?`,
+          `There are ${groups} equal sets with ${size} ${item} in each set. What is the total?`,
+          `Haim makes ${groups} rows of ${size} ${item}. How many ${item} does she use?`,
+          `${groups} teams each collect ${size} ${item}. How many ${item} are collected altogether?`,
+        ],
+        seed,
+        117,
+      );
       return {
         id: `story-multiply-${groups}-${size}`,
         topic: "multiplication",
         label: "Story problem",
-        prompt: `Haim has ${groups} groups of ${size} ${item}. How many ${item} altogether?`,
+        prompt,
         choices: options(answer, [
           groups + size,
           answer - groups,
@@ -1228,6 +1304,8 @@ const templates: Template[] = [
           `${a} x ? = ${total}`,
           `What number makes this true: ${a} x ? = ${total}?`,
           `Fill the missing factor: ${a} x ? = ${total}.`,
+          `${total} is the total and ${a} is one factor. What is the missing factor?`,
+          `Which number belongs in the box: ${a} x box = ${total}?`,
         ],
         seed,
         125,
@@ -1264,11 +1342,21 @@ const templates: Template[] = [
       const answer = 4 + spread(seed, 133, 9);
       const total = groups * answer;
       const [item, container] = spreadPick(items, seed, 135);
+      const prompt = spreadPick(
+        [
+          `${total} ${item} are shared equally into ${groups} ${container}. How many are in each ${container.slice(0, -1)}?`,
+          `Haim splits ${total} ${item} into ${groups} equal ${container}. How many ${item} go in each one?`,
+          `${groups} ${container} share ${total} ${item} equally. What is the size of each group?`,
+          `If ${total} ${item} make ${groups} equal ${container}, how many ${item} are in one ${container.slice(0, -1)}?`,
+        ],
+        seed,
+        137,
+      );
       return {
         id: `division-story-${total}-${groups}`,
         topic: "multiplication",
         label: "Division story",
-        prompt: `${total} ${item} are shared equally into ${groups} ${container}. How many are in each ${container.slice(0, -1)}?`,
+        prompt,
         choices: options(answer, [
           groups,
           answer + 1,
@@ -1301,11 +1389,21 @@ const templates: Template[] = [
       const columns = 4 + spread(seed, 143, 9);
       const item = spreadPick(items, seed, 145);
       const answer = rows * columns;
+      const prompt = spreadPick(
+        [
+          `There are ${rows} rows with ${columns} ${item} in each row. How many ${item} altogether?`,
+          `An array has ${rows} rows and ${columns} columns of ${item}. How many ${item} are shown?`,
+          `${rows} neat rows each hold ${columns} ${item}. What is the total?`,
+          `Haim draws ${rows} rows of ${columns} ${item}. How many does she draw?`,
+        ],
+        seed,
+        147,
+      );
       return {
         id: `array-${rows}-${columns}`,
         topic: "multiplication",
         label: "Array model",
-        prompt: `There are ${rows} rows with ${columns} ${item} in each row. How many ${item} altogether?`,
+        prompt,
         choices: options(answer, [
           rows + columns,
           answer - rows,
@@ -1360,8 +1458,8 @@ const templates: Template[] = [
     topic: "fractions",
     label: "Simplify fractions",
     build(seed) {
-      const [num, den] = spreadPick(coreFractions, seed, 161);
-      const scale = 2 + spread(seed, 163, 8);
+      const [num, den] = spreadPick(gentleSimplifyFractions, seed, 161);
+      const scale = 2 + spread(seed, 163, 2);
       const base = `${num * scale}/${den * scale}`;
       const answer = `${num}/${den}`;
       const prompt = spreadPick(
@@ -1369,6 +1467,8 @@ const templates: Template[] = [
           `What is ${base} in simplest form?`,
           `Simplify ${base}.`,
           `Reduce ${base} to its simplest fraction.`,
+          `Which simpler fraction has the same value as ${base}?`,
+          `Find the simplest same-value version of ${base}.`,
         ],
         seed,
         165,
@@ -1397,9 +1497,7 @@ const templates: Template[] = [
     topic: "fractions",
     label: "Number line",
     build(seed) {
-      const denominators = [
-        3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 18, 20,
-      ];
+      const denominators = [3, 4, 5, 6, 8, 10, 12];
       const den = spreadPick(denominators, seed, 171);
       const num = 1 + spread(seed, 173, den - 1);
       const answer = `${num}/${den}`;
@@ -1410,6 +1508,8 @@ const templates: Template[] = [
           `If one whole is split into ${den} equal jumps, what point is reached after ${num} jumps?`,
           `Start at 0 and make ${num} jumps on a line split into ${den} equal parts. Where are you?`,
           `Which fraction names the point ${num} jumps from 0 when one whole has ${den} equal jumps?`,
+          `A whole line has ${den} equal spaces. Which point is ${num} spaces from zero?`,
+          `Count ${num} of ${den} equal number-line jumps. Which fraction names that point?`,
         ],
         seed,
         175,
@@ -1437,9 +1537,8 @@ const templates: Template[] = [
     topic: "fractions",
     label: "Equivalent fractions",
     build(seed) {
-      const den = 2 + spread(seed, 181, 11);
-      const num = 1 + spread(seed, 183, den - 1);
-      const scale = 2 + spread(seed, 185, 11);
+      const [num, den] = spreadPick(friendlyFractions, seed, 181);
+      const scale = 2 + spread(seed, 185, 3);
       const [simpleNum, simpleDen] = simplifyParts(num, den);
       const base = `${simpleNum}/${simpleDen}`;
       const answer = `${simpleNum * scale}/${simpleDen * scale}`;
@@ -1502,8 +1601,8 @@ const templates: Template[] = [
         reason =
           "When the denominator is the same, the larger numerator has more of the same-sized parts.";
       } else {
-        const [num, den] = spreadPick(coreFractions, seed, 203);
-        const scale = 2 + spread(seed, 205, 6);
+        const [num, den] = spreadPick(friendlyFractions, seed, 203);
+        const scale = 2 + spread(seed, 205, 3);
         left = `${num}/${den}`;
         right = `${num * scale}/${den * scale}`;
         answer = "They are equal";
@@ -1544,11 +1643,21 @@ const templates: Template[] = [
       const right = formatDecimal(rightCents / 100);
       const answer = leftCents > rightCents ? left : right;
       const reason = `${left} is ${leftCents} hundredths and ${right} is ${rightCents} hundredths, so ${answer} is larger.`;
+      const prompt = spreadPick(
+        [
+          `Which is larger: ${left} or ${right}?`,
+          `Compare ${left} and ${right}. Which decimal is greater?`,
+          `Choose the bigger decimal: ${left} or ${right}.`,
+          `Line up the place values. Which is greater, ${left} or ${right}?`,
+        ],
+        seed,
+        215,
+      );
       return {
         id: `decimal-compare-${left}-${right}`,
         topic: "decimals",
         label: "Decimal comparison",
-        prompt: `Which is larger: ${left} or ${right}?`,
+        prompt,
         choices: [left, right, "They are equal", "Cannot tell"].sort(),
         answer,
         hint: "Add zeros at the end to line up place-value columns.",
@@ -1568,11 +1677,21 @@ const templates: Template[] = [
       const left = formatMoneyDecimal(leftCents);
       const right = formatMoneyDecimal(rightCents);
       const answer = formatMoneyDecimal(answerCents);
+      const prompt = spreadPick(
+        [
+          `Calculate ${left} + ${right}.`,
+          `Add ${left} and ${right}.`,
+          `What is the total of ${left} and ${right}?`,
+          `Line up the decimals and add: ${left} + ${right}.`,
+        ],
+        seed,
+        225,
+      );
       return {
         id: `decimal-add-${left}-${right}`,
         topic: "decimals",
         label: "Decimal addition",
-        prompt: `Calculate ${left} + ${right}.`,
+        prompt,
         choices: decimalOptions(answer, [
           formatMoneyDecimal(answerCents + 10),
           formatMoneyDecimal(Math.max(1, answerCents - 10)),
@@ -1597,11 +1716,21 @@ const templates: Template[] = [
       const left = formatMoneyDecimal(leftCents);
       const right = formatMoneyDecimal(rightCents);
       const answer = formatMoneyDecimal(answerCents);
+      const prompt = spreadPick(
+        [
+          `Calculate ${left} - ${right}.`,
+          `Subtract ${right} from ${left}.`,
+          `What is left after ${right} is taken from ${left}?`,
+          `Line up the decimals and subtract: ${left} - ${right}.`,
+        ],
+        seed,
+        235,
+      );
       return {
         id: `decimal-subtract-${left}-${right}`,
         topic: "decimals",
         label: "Decimal subtraction",
-        prompt: `Calculate ${left} - ${right}.`,
+        prompt,
         choices: decimalOptions(answer, [
           formatMoneyDecimal(answerCents + 10),
           formatMoneyDecimal(Math.max(1, answerCents - 10)),
@@ -1644,11 +1773,21 @@ const templates: Template[] = [
         place === "thousandths"
           ? `${whole} and ${Math.max(1, Math.floor(normalizedPart / 10))} hundredths`
           : `${whole}${normalizedPart} hundredths`;
+      const prompt = spreadPick(
+        [
+          `Which phrase correctly describes ${value}?`,
+          `Read ${value} using place-value words.`,
+          `Which place-value name matches ${value}?`,
+          `How should ${value} be said in decimal place value?`,
+        ],
+        seed,
+        247,
+      );
       return {
         id: `decimal-place-${value}`,
         topic: "decimals",
         label: "Place value",
-        prompt: `Which phrase correctly describes ${value}?`,
+        prompt,
         choices: [answer, distractorA, distractorB, "Cannot tell"].sort(),
         answer,
         hint: "Read the final digit by its place-value column.",
@@ -1674,11 +1813,21 @@ const templates: Template[] = [
         kind === "divide" ? Number(value) / factor : Number(value) * factor;
       const answerText = formatDecimal(answer, 4);
       const sign = kind === "divide" ? "/" : "x";
+      const prompt = spreadPick(
+        [
+          `Calculate ${value} ${sign} ${factor}.`,
+          `Move the digits to solve ${value} ${sign} ${factor}.`,
+          `What is ${value} ${sign} ${factor}?`,
+          `Use place-value moves for ${value} ${sign} ${factor}.`,
+        ],
+        seed,
+        257,
+      );
       return {
         id: `decimal-power-${value}-${factor}-${sign}`,
         topic: "decimals",
         label: "Powers of 10",
-        prompt: `Calculate ${value} ${sign} ${factor}.`,
+        prompt,
         choices: decimalOptions(answerText, [
           formatDecimal(answer * 10, 4),
           formatDecimal(answer / 10, 4),
@@ -1701,9 +1850,9 @@ const templates: Template[] = [
     topic: "percentages",
     label: "Benchmark percent",
     build(seed) {
-      const percent = 5 + spread(seed, 261, 19) * 5;
+      const [percent] = spreadPick(corePercentBenchmarks, seed, 261);
       const [simplePercent, hundredParts] = simplifyParts(percent, 100);
-      const whole = hundredParts * (4 + spread(seed, 263, 22));
+      const whole = hundredParts * (4 + spread(seed, 263, 17));
       const answer = (whole * percent) / 100;
       const trick =
         percent === 50
@@ -1745,9 +1894,12 @@ const templates: Template[] = [
     topic: "percentages",
     label: "Discount story",
     build(seed) {
-      const percent = 5 + spread(seed, 271, 18) * 5;
-      const [, denominator] = simplifyParts(percent, 100);
-      const price = denominator * (8 + spread(seed, 273, 28));
+      const [percent, denominator] = spreadPick(
+        gentleDiscountPercents,
+        seed,
+        271,
+      );
+      const price = denominator * (6 + spread(seed, 273, 19));
       const answer = price - (price * percent) / 100;
       const discount = price - answer;
       const prompt = spreadPick(
@@ -1778,7 +1930,7 @@ const templates: Template[] = [
     topic: "percentages",
     label: "Percent conversion",
     build(seed) {
-      const percentValue = 1 + spread(seed, 281, 99);
+      const percentValue = spreadPick(corePercentConversions, seed, 281);
       const [num, den] = simplifyParts(percentValue, 100);
       const percent = `${percentValue}%`;
       const answer = `${num}/${den}`;
@@ -1791,6 +1943,11 @@ const templates: Template[] = [
           `Which fraction matches ${percent}?`,
           `${percent} means how much of a whole as a fraction?`,
           `Write ${percent} as a simplified fraction.`,
+          `Turn ${percent} into a fraction in simplest form.`,
+          `${percent} is out of 100. Which simplified fraction shows the same amount?`,
+          `Which same-value fraction belongs with ${percent}?`,
+          `Convert ${percent} from percent form to fraction form.`,
+          `Choose the fraction partner for ${percent}.`,
         ],
         seed,
         283,
@@ -1819,9 +1976,13 @@ const templates: Template[] = [
     topic: "percentages",
     label: "Find the whole",
     build(seed) {
-      const percent = 5 + spread(seed, 291, 19) * 5;
-      const [, denominator] = simplifyParts(percent, 100);
-      const answer = denominator * (8 + spread(seed, 293, 28));
+      const [percent, denominator] = spreadPick(
+        gentleFindWholePercents,
+        seed,
+        291,
+      );
+      const maxMultiplier = Math.max(4, Math.floor(120 / denominator));
+      const answer = denominator * (4 + spread(seed, 293, maxMultiplier - 3));
       const part = (answer * percent) / 100;
       const prompt = spreadPick(
         [
@@ -1923,6 +2084,78 @@ function extractPercent(text: string) {
   return match ? Number(match[1]) : null;
 }
 
+function extractAllNumbers(text: string) {
+  return (text.match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
+}
+
+function isOneOf(values: readonly number[], target: number | null) {
+  return target !== null && values.includes(target);
+}
+
+export function estimateQuestionDifficulty(question: Question): Difficulty {
+  const numbers = extractAllNumbers(question.prompt);
+  const largestNumber = Math.max(...numbers, Number(question.answer), 0);
+  const percent = extractPercent(question.prompt);
+  const fraction =
+    extractFirstFraction(question.prompt) ??
+    extractFirstFraction(question.answer);
+
+  if (question.topic === "percentages") {
+    if (question.label === "Find the whole") {
+      if (!isOneOf([10, 20, 25, 50, 75], percent) || largestNumber > 120) {
+        return "Stretch";
+      }
+      return isOneOf([10, 25, 50], percent) ? "Warm-up" : "Core";
+    }
+    if (question.label === "Discount story") {
+      if (!isOneOf([10, 20, 25, 50], percent) || largestNumber > 250) {
+        return "Stretch";
+      }
+      return isOneOf([10, 50], percent) ? "Warm-up" : "Core";
+    }
+    if (question.label === "Percent conversion") {
+      if (!isOneOf(corePercentConversions, percent)) return "Stretch";
+      return isOneOf([10, 25, 50, 75], percent) ? "Warm-up" : "Core";
+    }
+    if (
+      !isOneOf(
+        corePercentBenchmarks.map(([value]) => value),
+        percent,
+      )
+    ) {
+      return "Stretch";
+    }
+    return largestNumber <= 100 && isOneOf([10, 25, 50], percent)
+      ? "Warm-up"
+      : "Core";
+  }
+
+  if (question.topic === "fractions") {
+    if (question.label === "Simplify fractions") {
+      return fraction && fraction.denominator <= 24 ? "Core" : "Stretch";
+    }
+    if (fraction && fraction.denominator > 12) return "Stretch";
+    if (largestNumber > 144) return "Stretch";
+    return fraction && fraction.denominator <= 6 ? "Warm-up" : "Core";
+  }
+
+  if (question.topic === "multiplication") {
+    if (largestNumber > 144) return "Stretch";
+    return largestNumber <= 60 ? "Warm-up" : "Core";
+  }
+
+  if (largestNumber > 10000) return "Stretch";
+  return question.label === "Place value" || largestNumber <= 100
+    ? "Warm-up"
+    : "Core";
+}
+
+function difficultyClassName(difficulty: Difficulty) {
+  if (difficulty === "Warm-up") return "bg-[#e7f0dd] text-[#36582e]";
+  if (difficulty === "Core") return "bg-[#dceaf0] text-[#24495a]";
+  return "bg-[#fff3dd] text-[#754714]";
+}
+
 function numbersFromId(id: string) {
   return (id.match(/\d+/g) ?? []).map(Number);
 }
@@ -1991,7 +2224,7 @@ function FractionBar({
   denominator: number;
   label: string;
 }) {
-  const safeDenominator = Math.max(1, Math.min(denominator, 20));
+  const safeDenominator = Math.max(1, Math.min(denominator, 24));
   const safeNumerator = Math.min(numerator, safeDenominator);
   const parts = Array.from({ length: safeDenominator }, (_, position) => ({
     id: `fraction-part-${position + 1}-of-${safeDenominator}`,
@@ -2220,6 +2453,7 @@ export function DailyPractice() {
   );
   const savedSummaryRef = useRef(false);
   const current = questions[index];
+  const currentDifficulty = estimateQuestionDifficulty(current);
   const selected = answers[current.id] ?? "";
   const isChecked = checked[current.id] ?? false;
   const isCorrect = isChecked && isAnswerCorrect(current, selected);
@@ -2602,9 +2836,16 @@ export function DailyPractice() {
             <article className="rounded-[2rem] border border-[#dfd3c0] bg-white/80 p-6 shadow-sm sm:p-8">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-[#94652e]">
-                    {topicLabels[current.topic]}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-[#94652e]">
+                      {topicLabels[current.topic]}
+                    </p>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${difficultyClassName(currentDifficulty)}`}
+                    >
+                      {currentDifficulty}
+                    </span>
+                  </div>
                   <h2 className="mt-2 font-serif text-4xl font-semibold leading-tight">
                     {current.prompt}
                   </h2>

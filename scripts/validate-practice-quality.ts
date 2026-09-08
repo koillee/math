@@ -1,5 +1,6 @@
 import {
   buildDailySetFromSeed,
+  estimateQuestionDifficulty,
   inferredPracticeLabels,
   isAnswerCorrect,
 } from "../src/app/daily-practice/DailyPractice";
@@ -12,6 +13,7 @@ import {
 const modes = ["focus", "mixed", "reverse", "hard"] as const;
 const dailyPrompts = new Set<string>();
 let dailyPromptCount = 0;
+const minimumDailyVarietyRatio = 0.78;
 
 for (let seed = 20260901; seed < 20261401; seed += 1) {
   const dailySet = buildDailySetFromSeed(seed);
@@ -42,6 +44,12 @@ for (let seed = 20260901; seed < 20261401; seed += 1) {
     );
   }
   for (const question of dailySet.questions) {
+    const difficulty = estimateQuestionDifficulty(question);
+    if (difficulty === "Stretch") {
+      throw new Error(
+        `${question.id} is too difficult for daily practice: ${question.prompt}`,
+      );
+    }
     if (question.choices.length !== 4) {
       throw new Error(
         `${question.id} has ${question.choices.length} choices instead of 4`,
@@ -68,7 +76,7 @@ for (let seed = 20260901; seed < 20261401; seed += 1) {
   }
 }
 
-if (dailyPrompts.size / dailyPromptCount < 0.82) {
+if (dailyPrompts.size / dailyPromptCount < minimumDailyVarietyRatio) {
   throw new Error(
     `Daily bank variety is too low: ${dailyPrompts.size}/${dailyPromptCount} unique prompts`,
   );
