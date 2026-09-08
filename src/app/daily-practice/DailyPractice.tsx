@@ -42,6 +42,17 @@ type Template = {
   build: (seed: number) => Question;
 };
 
+type LessonRecap = {
+  title: string;
+  bigIdea: string;
+  steps: string[];
+  example: string;
+  trap: string;
+  visualCue?: string;
+  checkPrompt?: string;
+  practiceLabels?: string[];
+};
+
 const stageOrder: Stage[] = ["goals", "lesson", "practice", "gugudan"];
 
 const topicLessons: Record<
@@ -52,13 +63,7 @@ const topicLessons: Record<
     steps: string[];
     example: string;
     trap: string;
-    recaps: {
-      title: string;
-      bigIdea: string;
-      steps: string[];
-      example: string;
-      trap: string;
-    }[];
+    recaps: LessonRecap[];
   }
 > = {
   multiplication: {
@@ -132,6 +137,120 @@ const topicLessons: Record<
         ],
         example: "48 stickers in bags of 6 means 48 / 6 = 8 bags.",
         trap: "Always check what the answer represents in the story.",
+      },
+      {
+        title: "Skip counting builds a table",
+        bigIdea:
+          "Multiplication facts are patterns. Skip counting helps your brain hear and predict those patterns.",
+        steps: [
+          "Choose the table you are practicing.",
+          "Say the multiples in rhythm.",
+          "Stop and connect each multiple to a fact.",
+        ],
+        example: "For the 8 table: 8, 16, 24, 32 means 4 x 8 = 32.",
+        trap: "Saying the pattern without knowing which fact you reached.",
+        visualCue: "Picture stepping stones with the same jump size each time.",
+        checkPrompt:
+          "Say the 8 table up to 8 x 6, then ask which fact each number belongs to.",
+        practiceLabels: ["Fact family", "Missing number"],
+      },
+      {
+        title: "Break apart a hard factor",
+        bigIdea:
+          "A harder multiplication fact can be split into friendlier pieces.",
+        steps: [
+          "Keep one factor the same.",
+          "Break the other factor into easy parts.",
+          "Multiply each part and add them.",
+        ],
+        example: "7 x 12 can be 7 x 10 plus 7 x 2, so 70 + 14 = 84.",
+        trap: "Breaking apart both numbers at once before you are ready.",
+        visualCue:
+          "Picture one big rectangle split into two smaller rectangles.",
+        checkPrompt: "Explain how 6 x 14 can become 6 x 10 plus 6 x 4.",
+        practiceLabels: ["Story problem", "Array model"],
+      },
+      {
+        title: "Double and halve to make it easier",
+        bigIdea:
+          "Some products stay the same if one factor doubles and the other factor halves.",
+        steps: [
+          "Look for an even factor.",
+          "Halve that factor.",
+          "Double the other factor and multiply the easier pair.",
+        ],
+        example: "5 x 16 is the same as 10 x 8, which is 80.",
+        trap: "Doubling one number without halving the other changes the answer.",
+        visualCue:
+          "Picture moving half the objects from one row to make twice as many shorter rows.",
+        checkPrompt: "Show why 4 x 18 has the same total as 8 x 9.",
+        practiceLabels: ["Array model", "Story problem"],
+      },
+      {
+        title: "The 9s have a pattern",
+        bigIdea:
+          "The 9 times table has digit patterns that make checking easier.",
+        steps: [
+          "For 9 x n, think 10 x n first.",
+          "Subtract one n.",
+          "Check the digit sum for many 9s facts.",
+        ],
+        example: "9 x 7 is 70 - 7 = 63, and 6 + 3 = 9.",
+        trap: "Using the digit pattern as a guess instead of checking the fact.",
+        visualCue: "Picture 10 groups, then remove one object from each group.",
+        checkPrompt:
+          "Explain why 9 x 8 is close to 10 x 8 but a little smaller.",
+        practiceLabels: ["Fact family", "Missing number"],
+      },
+      {
+        title: "Estimate before exact answer",
+        bigIdea:
+          "A quick estimate tells whether your final multiplication or division answer makes sense.",
+        steps: [
+          "Round or use a nearby easy fact.",
+          "Predict about how big the answer should be.",
+          "Solve exactly and compare.",
+        ],
+        example: "11 x 8 should be close to 10 x 8 = 80, so 88 makes sense.",
+        trap: "Accepting an answer that is far too small or far too large.",
+        visualCue:
+          "Picture a target zone before trying to hit the exact answer.",
+        checkPrompt: "Before solving 12 x 9, say what size answer you expect.",
+        practiceLabels: ["Story problem", "Array model", "Fact family"],
+      },
+      {
+        title: "Division checks multiplication",
+        bigIdea:
+          "Every division answer can be checked by multiplying back to the total.",
+        steps: [
+          "Solve the division.",
+          "Multiply your answer by the divisor.",
+          "Check that you return to the starting total.",
+        ],
+        example: "72 / 9 = 8 because 8 x 9 = 72.",
+        trap: "Stopping after division without checking the answer in the story.",
+        visualCue:
+          "Picture walking backward with division, then forward with multiplication.",
+        checkPrompt:
+          "Say how to check 56 / 7 without redoing the whole problem.",
+        practiceLabels: ["Division story", "Fact family"],
+      },
+      {
+        title: "Missing factor means missing partner",
+        bigIdea:
+          "A missing factor is asking for the partner that makes the total.",
+        steps: [
+          "Name the total.",
+          "Name the known factor.",
+          "Ask which partner completes the fact.",
+        ],
+        example:
+          "? x 8 = 96 asks which partner of 8 makes 96, so the answer is 12.",
+        trap: "Using the total as the answer instead of the missing partner.",
+        visualCue:
+          "Picture a pair of numbers holding up the same total together.",
+        checkPrompt: "Explain why 7 is the missing partner in 6 x ? = 42.",
+        practiceLabels: ["Missing number", "Fact family"],
       },
     ],
   },
@@ -208,6 +327,121 @@ const topicLessons: Record<
           "3/4 is the third jump when 0 to 1 is split into four equal parts.",
         trap: "Unequal jumps make the number line misleading.",
       },
+      {
+        title: "The whole must stay the same",
+        bigIdea: "A fraction only makes sense when you know what one whole is.",
+        steps: [
+          "Ask what object, set, or length is the whole.",
+          "Keep that whole the same while comparing.",
+          "Then decide what part is being described.",
+        ],
+        example:
+          "1/2 of a small cookie is not the same amount as 1/2 of a large cake.",
+        trap: "Comparing fractions from different wholes as if the wholes match.",
+        visualCue:
+          "Picture two bars with different lengths before shading half of each.",
+        checkPrompt:
+          "Say why 1/2 is not always the same amount in every story.",
+        practiceLabels: ["Compare fractions", "Fraction of an amount"],
+      },
+      {
+        title: "Unit fractions are building blocks",
+        bigIdea:
+          "A unit fraction has numerator 1 and shows the size of one equal part.",
+        steps: [
+          "Split the whole by the denominator.",
+          "Name one part as the unit fraction.",
+          "Build larger fractions from repeated unit fractions.",
+        ],
+        example:
+          "If a whole is split into 6 parts, one part is 1/6 and four parts are 4/6.",
+        trap: "Forgetting that 1/8 is smaller than 1/4 because the parts are thinner.",
+        visualCue:
+          "Picture one slice first, then count more slices of the same size.",
+        checkPrompt: "Explain why 3/8 is three copies of 1/8.",
+        practiceLabels: ["Number line", "Compare fractions"],
+      },
+      {
+        title: "Fraction of a set",
+        bigIdea:
+          "Fractions can describe part of a group, not only part of a shape.",
+        steps: [
+          "Count the whole set.",
+          "Divide by the denominator.",
+          "Take the numerator number of equal groups.",
+        ],
+        example: "2/3 of 24 beads: 24 / 3 = 8, then 2 x 8 = 16 beads.",
+        trap: "Taking the numerator first before making equal groups.",
+        visualCue:
+          "Picture 24 beads sorted into 3 equal bowls, then choose 2 bowls.",
+        checkPrompt: "Tell what the denominator does in 3/5 of 40.",
+        practiceLabels: ["Fraction of an amount"],
+      },
+      {
+        title: "Multiply top and bottom together",
+        bigIdea:
+          "Equivalent fractions are made by scaling the numerator and denominator by the same number.",
+        steps: [
+          "Choose a scale factor.",
+          "Multiply the numerator by it.",
+          "Multiply the denominator by the same factor.",
+        ],
+        example: "3/5 scaled by 4 becomes 12/20.",
+        trap: "Scaling only the numerator makes a different fraction.",
+        visualCue:
+          "Picture cutting every old slice into the same number of smaller slices.",
+        checkPrompt: "Explain why 2/3 and 8/12 still cover the same amount.",
+        practiceLabels: ["Equivalent fractions"],
+      },
+      {
+        title: "Simplify in steps",
+        bigIdea:
+          "You can simplify a fraction little by little if you do not see the biggest common factor yet.",
+        steps: [
+          "Look for any common factor.",
+          "Divide top and bottom by that factor.",
+          "Repeat until no common factor remains.",
+        ],
+        example: "18/24 can become 9/12, then 3/4.",
+        trap: "Thinking you failed if you did not simplify in one jump.",
+        visualCue:
+          "Picture folding a fraction smaller while keeping the shaded amount the same.",
+        checkPrompt: "Show a two-step simplification for 12/18.",
+        practiceLabels: ["Simplify fractions", "Equivalent fractions"],
+      },
+      {
+        title: "Use half as a benchmark",
+        bigIdea:
+          "Many fraction comparisons become easier when you ask whether each fraction is less than, equal to, or greater than 1/2.",
+        steps: [
+          "Find half of the denominator.",
+          "Compare the numerator with that halfway point.",
+          "Use that to judge the size.",
+        ],
+        example:
+          "5/8 is more than 1/2 because half of 8 is 4, and 5 is bigger than 4.",
+        trap: "Comparing only the numerator without thinking about the denominator.",
+        visualCue: "Picture a bar with the halfway line marked first.",
+        checkPrompt:
+          "Decide whether 3/7 is less or more than half, and say why.",
+        practiceLabels: ["Compare fractions", "Number line"],
+      },
+      {
+        title: "Fractions near one",
+        bigIdea:
+          "A fraction is close to one whole when the numerator is close to the denominator.",
+        steps: [
+          "Compare numerator and denominator.",
+          "Ask how many parts are missing from one whole.",
+          "Use that missing part to compare.",
+        ],
+        example: "7/8 is close to 1 because it is only missing 1/8.",
+        trap: "Thinking 7/8 is small because 8 is a large denominator.",
+        visualCue:
+          "Picture a nearly full bar with only one small piece unshaded.",
+        checkPrompt: "Explain why 9/10 is closer to 1 than 3/4.",
+        practiceLabels: ["Compare fractions", "Number line"],
+      },
     ],
   },
   decimals: {
@@ -279,6 +513,118 @@ const topicLessons: Record<
         ],
         example: "2.05 is two and five hundredths, not two and five tenths.",
         trap: "Dropping the zero in 2.05 changes how the number feels.",
+      },
+      {
+        title: "Tenths come before hundredths",
+        bigIdea:
+          "The first digit after the decimal is tenths, and the second digit is hundredths.",
+        steps: [
+          "Find the decimal point.",
+          "Read the first digit after it as tenths.",
+          "Read the second digit after it as hundredths.",
+        ],
+        example: "0.36 is 3 tenths and 6 hundredths, or 36 hundredths.",
+        trap: "Calling 0.36 thirty-six tenths instead of thirty-six hundredths.",
+        visualCue:
+          "Picture a place-value chart with tenths as the first small column.",
+        checkPrompt: "Read 0.58 using place-value words.",
+        practiceLabels: ["Place value"],
+      },
+      {
+        title: "Trailing zeros do not change value",
+        bigIdea:
+          "Zeros at the end of a decimal can help compare numbers without changing the value.",
+        steps: [
+          "Add zeros only to the end.",
+          "Line up the decimal places.",
+          "Compare column by column.",
+        ],
+        example: "0.7, 0.70, and 0.700 all have the same value.",
+        trap: "Thinking 0.700 is larger because it has more digits.",
+        visualCue:
+          "Picture the same shaded amount written with different place-value labels.",
+        checkPrompt: "Explain why 2.5 and 2.50 are equal.",
+        practiceLabels: ["Decimal comparison", "Place value"],
+      },
+      {
+        title: "Compare one column at a time",
+        bigIdea:
+          "Decimal comparison is calmer when you compare from left to right by place value.",
+        steps: [
+          "Compare the ones first.",
+          "If tied, compare tenths.",
+          "Continue to hundredths and thousandths only if needed.",
+        ],
+        example:
+          "3.48 is greater than 3.407 because the tenths tie, but 8 hundredths is greater than 0 hundredths.",
+        trap: "Reading the decimal part like a whole number without place value.",
+        visualCue:
+          "Picture two numbers stacked in columns with the decimal points lined up.",
+        checkPrompt: "Compare 4.09 and 4.1 by saying each place-value column.",
+        practiceLabels: ["Decimal comparison"],
+      },
+      {
+        title: "Estimate decimal sums",
+        bigIdea: "A quick estimate helps catch decimal addition mistakes.",
+        steps: [
+          "Round each number to a friendly nearby value.",
+          "Add the estimate mentally.",
+          "Check your exact answer is close.",
+        ],
+        example: "2.85 + 4.12 should be close to 3 + 4 = 7.",
+        trap: "Accepting 2.85 + 4.12 = 6.097 because the digits look familiar.",
+        visualCue:
+          "Picture the exact answer sitting near a simple rounded answer.",
+        checkPrompt: "Estimate 5.92 + 1.08 before adding exactly.",
+        practiceLabels: ["Decimal addition"],
+      },
+      {
+        title: "Subtract decimals by lining up",
+        bigIdea:
+          "Decimal subtraction works like whole-number subtraction when place values are lined up.",
+        steps: [
+          "Write the larger number on top.",
+          "Line up decimal points.",
+          "Use zeros as placeholders if a place is empty.",
+        ],
+        example: "5.00 - 2.35 lines up hundredths, so the answer is 2.65.",
+        trap: "Subtracting digits that are not in the same place-value column.",
+        visualCue:
+          "Picture dollars and cents stacked neatly before subtracting.",
+        checkPrompt:
+          "Explain why 6.4 can be written as 6.40 before subtracting.",
+        practiceLabels: ["Decimal subtraction"],
+      },
+      {
+        title: "Multiplying by 100 means two moves",
+        bigIdea: "Each zero in 10, 100, or 1000 means one place-value move.",
+        steps: [
+          "Count the zeros.",
+          "Move digits that many columns larger for multiplication.",
+          "Check that the answer is bigger.",
+        ],
+        example: "0.48 x 100 moves two columns larger, giving 48.",
+        trap: "Moving only one place for x100.",
+        visualCue:
+          "Picture each digit sliding two columns left on a place-value chart.",
+        checkPrompt: "Say how many moves are needed for x1000.",
+        practiceLabels: ["Powers of 10"],
+      },
+      {
+        title: "Dividing by 10 makes numbers smaller",
+        bigIdea:
+          "Dividing by 10, 100, or 1000 moves digits to smaller place-value columns.",
+        steps: [
+          "Count the zeros.",
+          "Move digits that many columns smaller.",
+          "Check that the answer is smaller than the starting number.",
+        ],
+        example: "36 / 100 = 0.36.",
+        trap: "Forgetting to check whether the answer should be smaller.",
+        visualCue:
+          "Picture each digit sliding right into tenths and hundredths.",
+        checkPrompt: "Explain why 7.2 / 10 is less than 7.2.",
+        practiceLabels: ["Powers of 10", "Place value"],
       },
     ],
   },
@@ -352,6 +698,117 @@ const topicLessons: Record<
         ],
         example: "10% of 30 is 3, but 10% of 90 is 9.",
         trap: "A percent answer without a whole is incomplete.",
+      },
+      {
+        title: "The 100-grid meaning",
+        bigIdea: "Percent means a number of parts out of 100 equal parts.",
+        steps: [
+          "Picture 100 equal squares.",
+          "Shade the percent number of squares.",
+          "Connect the shading to a fraction out of 100.",
+        ],
+        example: "37% means 37 out of 100 squares, or 37/100.",
+        trap: "Treating a percent as a standalone number without a whole.",
+        visualCue: "Picture a 10 by 10 grid and shade the percent amount.",
+        checkPrompt: "Explain what 62% means using the words 'out of 100.'",
+        practiceLabels: ["Percent conversion"],
+      },
+      {
+        title: "Use 10 percent as an anchor",
+        bigIdea: "Once you know 10%, you can build many other percentages.",
+        steps: [
+          "Find 10% by dividing by 10.",
+          "Double it for 20% or triple it for 30%.",
+          "Combine anchors when needed.",
+        ],
+        example: "30% of 80 is three lots of 8, so it is 24.",
+        trap: "Multiplying by 30 instead of finding 30% of the whole.",
+        visualCue: "Picture three equal 10% strips stacked together.",
+        checkPrompt: "Use 10% to explain 40% of 90.",
+        practiceLabels: ["Benchmark percent"],
+      },
+      {
+        title: "One percent is a tiny anchor",
+        bigIdea:
+          "1% is one hundredth of the whole, so it can help with less friendly percentages.",
+        steps: [
+          "Find 1% by dividing the whole by 100.",
+          "Multiply by the percent you need.",
+          "Check whether the answer is reasonable.",
+        ],
+        example: "7% of 200: 1% is 2, so 7% is 14.",
+        trap: "Forgetting that 1% is much smaller than 10%.",
+        visualCue:
+          "Picture one square from a 100-square grid, then count more squares.",
+        checkPrompt: "Explain how 1% helps you find 6% of 300.",
+        practiceLabels: ["Benchmark percent"],
+      },
+      {
+        title: "Discount amount or sale price",
+        bigIdea:
+          "Discount questions often have two important numbers: the amount off and the price after discount.",
+        steps: [
+          "Find the amount off.",
+          "Read what the question asks for.",
+          "Subtract if it asks for the sale price.",
+        ],
+        example: "20% off HK$150 is HK$30 off, so the sale price is HK$120.",
+        trap: "Giving the discount amount when the question asks for the sale price.",
+        visualCue:
+          "Picture a price tag, then cross out the discount part before reading the final price.",
+        checkPrompt:
+          "Say both numbers for 25% off HK$80: amount off and sale price.",
+        practiceLabels: ["Discount story"],
+      },
+      {
+        title: "Percent and fractions are partners",
+        bigIdea: "A percent can often be simplified into a friendly fraction.",
+        steps: [
+          "Write the percent over 100.",
+          "Simplify the fraction.",
+          "Use the fraction if it makes the calculation easier.",
+        ],
+        example: "40% = 40/100 = 2/5.",
+        trap: "Using an unsimplified fraction when a friendly one is available.",
+        visualCue:
+          "Picture 40 shaded squares becoming 2 shaded fifths of the same grid.",
+        checkPrompt: "Convert 60% into a simplified fraction and explain it.",
+        practiceLabels: ["Percent conversion", "Benchmark percent"],
+      },
+      {
+        title: "Find the whole by undoing",
+        bigIdea:
+          "When you know the percent part, finding the whole means undoing the percent relationship.",
+        steps: [
+          "Name the part you know.",
+          "Name the percent relationship.",
+          "Use the benchmark or fraction to rebuild the whole.",
+        ],
+        example:
+          "15 is 25% of a number. Since 25% is 1/4, the whole is 15 x 4 = 60.",
+        trap: "Dividing or multiplying before identifying what the percent means.",
+        visualCue:
+          "Picture one known piece, then rebuild all equal pieces of the whole.",
+        checkPrompt: "Explain why 12 is 20% of 60 by rebuilding the whole.",
+        practiceLabels: ["Find the whole"],
+      },
+      {
+        title: "Check percent reasonableness",
+        bigIdea:
+          "A percent answer should make sense compared with the whole and the size of the percent.",
+        steps: [
+          "Decide whether the percent is less than or more than 50%.",
+          "Compare your answer with half of the whole.",
+          "Recheck if the answer is not sensible.",
+        ],
+        example:
+          "80% of 50 should be more than 25 because 80% is more than half.",
+        trap: "Accepting an answer without comparing it to the whole.",
+        visualCue:
+          "Picture the whole bar, the halfway mark, and the percent amount.",
+        checkPrompt:
+          "Before calculating 15% of 200, say whether the answer should be small or large.",
+        practiceLabels: ["Benchmark percent", "Discount story"],
       },
     ],
   },
@@ -565,19 +1022,119 @@ function validateQuestion(question: Question) {
 
 function rotateTemplates(source: Template[], seed: number, count: number) {
   const selected: Template[] = [];
+  const limit = Math.min(count, source.length);
+  let step = 2 + spread(seed, 29, Math.max(1, source.length - 1));
+  while (source.length > 1 && gcd(step, source.length) !== 1) {
+    step += 1;
+  }
+  const start = spread(seed, 31, source.length);
   for (
     let offset = 0;
-    selected.length < Math.min(count, source.length) &&
-    offset < source.length * 3;
+    selected.length < limit && offset < source.length * 2;
     offset += 1
   ) {
-    const template = source[Math.abs(seed + offset * 3) % source.length];
+    const template = source[(start + offset * step) % source.length];
     if (!selected.some((item) => item.label === template.label)) {
       selected.push(template);
     }
   }
   return selected;
 }
+
+export function inferredPracticeLabels(topic: Topic, lesson: LessonRecap) {
+  if (lesson.practiceLabels?.length) {
+    const labels = new Set(lesson.practiceLabels);
+    for (const label of lesson.practiceLabels) {
+      if (label === "Fact family") labels.add("Missing number");
+      if (label === "Missing number") labels.add("Fact family");
+      if (label === "Story problem") labels.add("Array model");
+      if (label === "Array model") labels.add("Story problem");
+      if (label === "Division story") labels.add("Fact family");
+      if (label === "Fraction of an amount") labels.add("Number line");
+      if (label === "Decimal comparison") labels.add("Place value");
+      if (label === "Decimal addition") labels.add("Decimal subtraction");
+      if (label === "Decimal subtraction") labels.add("Decimal addition");
+      if (label === "Powers of 10") labels.add("Place value");
+      if (label === "Place value") labels.add("Decimal comparison");
+      if (label === "Number line") labels.add("Compare fractions");
+      if (label === "Equivalent fractions") labels.add("Simplify fractions");
+      if (label === "Simplify fractions") labels.add("Equivalent fractions");
+      if (label === "Benchmark percent") labels.add("Percent conversion");
+      if (label === "Percent conversion") labels.add("Benchmark percent");
+      if (label === "Find the whole") labels.add("Benchmark percent");
+      if (label === "Discount story") labels.add("Benchmark percent");
+    }
+    return Array.from(labels);
+  }
+  const text = `${lesson.title} ${lesson.bigIdea}`.toLowerCase();
+  if (topic === "multiplication") {
+    if (text.includes("array")) return ["Array model", "Story problem"];
+    if (text.includes("division") || text.includes("groups")) {
+      return ["Division story", "Fact family"];
+    }
+    if (text.includes("missing")) return ["Missing number", "Fact family"];
+    return ["Fact family", "Story problem", "Missing number"];
+  }
+  if (topic === "fractions") {
+    if (text.includes("equivalent")) {
+      return ["Equivalent fractions", "Simplify fractions", "Number line"];
+    }
+    if (text.includes("simpl")) {
+      return ["Simplify fractions", "Equivalent fractions"];
+    }
+    if (text.includes("number line")) {
+      return ["Number line", "Compare fractions", "Equivalent fractions"];
+    }
+    if (text.includes("compare") || text.includes("pieces")) {
+      return ["Compare fractions", "Number line"];
+    }
+    return ["Fraction of an amount", "Number line"];
+  }
+  if (topic === "decimals") {
+    if (text.includes("money"))
+      return ["Decimal addition", "Decimal subtraction"];
+    if (text.includes("10") || text.includes("100") || text.includes("1000")) {
+      return ["Powers of 10", "Place value"];
+    }
+    if (text.includes("compare")) return ["Decimal comparison", "Place value"];
+    return ["Place value", "Decimal comparison"];
+  }
+  if (text.includes("discount")) return ["Discount story", "Benchmark percent"];
+  if (text.includes("whole")) return ["Find the whole", "Benchmark percent"];
+  if (text.includes("fraction") || text.includes("decimal")) {
+    return ["Percent conversion", "Benchmark percent"];
+  }
+  return ["Benchmark percent", "Discount story"];
+}
+
+const topicTeachingDefaults: Record<
+  Topic,
+  { visualCue: string; checkPrompt: string }
+> = {
+  multiplication: {
+    visualCue:
+      "Imagine equal groups arranged in rows. The total is all the groups together, and division asks you to undo that total.",
+    checkPrompt:
+      "Say one multiplication fact and the two division facts that belong with it.",
+  },
+  fractions: {
+    visualCue:
+      "Picture one same-size bar. The denominator makes equal parts; the numerator counts how many of those parts are used.",
+    checkPrompt:
+      "Explain what the denominator does before saying what the numerator does.",
+  },
+  decimals: {
+    visualCue:
+      "Picture place-value columns on both sides of the decimal point: ones, tenths, hundredths, thousandths.",
+    checkPrompt:
+      "Read the decimal using place-value words before you calculate.",
+  },
+  percentages: {
+    visualCue:
+      "Picture a 100-square grid. The percent tells how many of those 100 squares are selected.",
+    checkPrompt: "Start by saying, 'percent of what whole?' before solving.",
+  },
+};
 
 const templates: Template[] = [
   {
@@ -850,6 +1407,8 @@ const templates: Template[] = [
           `On a number line from 0 to 1, where do you land after ${num} equal jumps out of ${den}?`,
           `A number line from 0 to 1 is split into ${den} equal parts. Which fraction is the ${num}th tick mark?`,
           `If one whole is split into ${den} equal jumps, what point is reached after ${num} jumps?`,
+          `Start at 0 and make ${num} jumps on a line split into ${den} equal parts. Where are you?`,
+          `Which fraction names the point ${num} jumps from 0 when one whole has ${den} equal jumps?`,
         ],
         seed,
         175,
@@ -888,6 +1447,8 @@ const templates: Template[] = [
           `Which fraction is equal to ${base}?`,
           `Multiply the top and bottom of ${base} by ${scale}. Which equivalent fraction do you get?`,
           `Which choice shows ${base} scaled by ${scale} without changing its value?`,
+          `Scale ${base} by ${scale}. Which answer names the same amount?`,
+          `Which fraction is a same-value version of ${base} using scale factor ${scale}?`,
         ],
         seed,
         187,
@@ -952,6 +1513,8 @@ const templates: Template[] = [
           `Which is larger: ${left} or ${right}?`,
           `Compare ${left} and ${right}. Which one is greater?`,
           `Choose the larger fraction: ${left} or ${right}.`,
+          `Which fraction shows more of the same whole: ${left} or ${right}?`,
+          `Decide whether ${left}, ${right}, or neither is greater.`,
         ],
         seed,
         207,
@@ -1149,11 +1712,21 @@ const templates: Template[] = [
             : percent === 75
               ? "75% is three quarters."
               : `${percent}% means ${simplePercent}/${hundredParts} of the whole.`;
+      const prompt = spreadPick(
+        [
+          `What is ${percent}% of ${whole}?`,
+          `Find ${percent}% of ${whole}.`,
+          `${whole} is the whole. What amount is ${percent}%?`,
+          `Use a benchmark to calculate ${percent}% of ${whole}.`,
+        ],
+        seed,
+        265,
+      );
       return {
         id: `percent-${percent}-${whole}`,
         topic: "percentages",
         label: "Benchmark percent",
-        prompt: `What is ${percent}% of ${whole}?`,
+        prompt,
         choices: options(answer, [
           percent,
           whole - answer,
@@ -1176,11 +1749,21 @@ const templates: Template[] = [
       const price = denominator * (8 + spread(seed, 273, 28));
       const answer = price - (price * percent) / 100;
       const discount = price - answer;
+      const prompt = spreadPick(
+        [
+          `A HK$${price} item is ${percent}% off. What is the sale price?`,
+          `A price tag shows HK$${price}, then ${percent}% is taken off. What do you pay?`,
+          `Find the final price after a ${percent}% discount on HK$${price}.`,
+          `Haim finds an item for HK$${price} with ${percent}% off. What is the sale price?`,
+        ],
+        seed,
+        275,
+      );
       return {
         id: `percent-discount-${percent}-${price}`,
         topic: "percentages",
         label: "Discount story",
-        prompt: `A HK$${price} item is ${percent}% off. What is the sale price?`,
+        prompt,
         choices: options(answer, [discount, price + discount, price - percent]),
         answer: String(answer),
         hint: "First find the discount amount, then subtract it from the original price.",
@@ -1239,11 +1822,21 @@ const templates: Template[] = [
       const [, denominator] = simplifyParts(percent, 100);
       const answer = denominator * (8 + spread(seed, 293, 28));
       const part = (answer * percent) / 100;
+      const prompt = spreadPick(
+        [
+          `${part} is ${percent}% of what number?`,
+          `If ${percent}% equals ${part}, what is the whole?`,
+          `${part} is the percent part. Rebuild the whole if it is ${percent}%.`,
+          `What whole number has ${part} as ${percent}% of it?`,
+        ],
+        seed,
+        295,
+      );
       return {
         id: `percent-whole-${percent}-${part}`,
         topic: "percentages",
         label: "Find the whole",
-        prompt: `${part} is ${percent}% of what number?`,
+        prompt,
         choices: options(answer, [
           part + percent,
           part * 10,
@@ -1268,14 +1861,33 @@ export function buildDailySetFromSeed(seed: number) {
     "percentages",
   ];
   const todayTopic = topicOrder[seed % topicOrder.length];
-  const lesson = pick(topicLessons[todayTopic].recaps, seed + 23);
+  const lesson = spreadPick(topicLessons[todayTopic].recaps, seed, 301);
   const todayTemplates = templates.filter(
     (template) => template.topic === todayTopic,
   );
   const reviewTemplates = templates.filter(
     (template) => template.topic !== todayTopic,
   );
-  const dailyTemplates = rotateTemplates(todayTemplates, seed + 1, 3);
+  const lessonLabels = new Set(inferredPracticeLabels(todayTopic, lesson));
+  const lessonTemplates = todayTemplates.filter((template) =>
+    lessonLabels.has(template.label),
+  );
+  const lessonMatchedTemplates = rotateTemplates(
+    lessonTemplates.length ? lessonTemplates : todayTemplates,
+    seed + 1,
+    3,
+  );
+  const dailyTemplates = [
+    ...lessonMatchedTemplates,
+    ...rotateTemplates(
+      todayTemplates.filter(
+        (template) =>
+          !lessonMatchedTemplates.some((item) => item.label === template.label),
+      ),
+      seed + 5,
+      3 - lessonMatchedTemplates.length,
+    ),
+  ];
   const mixedTemplates = rotateTemplates(reviewTemplates, seed + 11, 3);
   return {
     todayTopic,
@@ -1298,6 +1910,10 @@ export function DailyPractice() {
     [refresh],
   );
   const topicLesson = topicLessons[todayTopic];
+  const lessonVisualCue =
+    lesson.visualCue ?? topicTeachingDefaults[todayTopic].visualCue;
+  const lessonCheckPrompt =
+    lesson.checkPrompt ?? topicTeachingDefaults[todayTopic].checkPrompt;
   const [stage, setStage] = useState<Stage>("goals");
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -1575,6 +2191,16 @@ export function DailyPractice() {
               </p>
               <p className="mt-4 text-lg leading-7 text-[#41504b]">
                 {lesson.example}
+              </p>
+            </div>
+            <div className="rounded-[2rem] border border-[#cfded7] bg-white/80 p-6">
+              <p className="font-semibold text-[#24495a]">Picture it</p>
+              <p className="mt-3 leading-6 text-[#41504b]">{lessonVisualCue}</p>
+            </div>
+            <div className="rounded-[2rem] border border-[#dfd3c0] bg-[#f8efe1] p-6">
+              <p className="font-semibold text-[#754714]">Say it back</p>
+              <p className="mt-3 leading-6 text-[#754714]">
+                {lessonCheckPrompt}
               </p>
             </div>
             <div className="rounded-[2rem] border border-[#dfd3c0] bg-[#fff3dd] p-6">

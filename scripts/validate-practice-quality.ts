@@ -1,5 +1,6 @@
 import {
   buildDailySetFromSeed,
+  inferredPracticeLabels,
   isAnswerCorrect,
 } from "../src/app/daily-practice/DailyPractice";
 import {
@@ -27,6 +28,17 @@ for (let seed = 20260901; seed < 20261401; seed += 1) {
   if (topicAlignedQuestions.length < 3) {
     throw new Error(
       `Seed ${seed} only created ${topicAlignedQuestions.length} questions for ${dailySet.todayTopic}`,
+    );
+  }
+  const lessonLabels = new Set(
+    inferredPracticeLabels(dailySet.todayTopic, dailySet.lesson),
+  );
+  const lessonAlignedQuestions = dailySet.questions.filter((question) =>
+    lessonLabels.has(question.label),
+  );
+  if (lessonAlignedQuestions.length < 2) {
+    throw new Error(
+      `Seed ${seed} only created ${lessonAlignedQuestions.length} questions for lesson "${dailySet.lesson.title}"`,
     );
   }
   for (const question of dailySet.questions) {
