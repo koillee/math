@@ -5,7 +5,6 @@ import {
   CalendarDays,
   MapIcon,
   NotebookTabs,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -13,15 +12,19 @@ export default function HaimHome() {
   return (
     <main className="min-h-screen bg-[#f6f0e5] px-4 py-6 text-[#17211f] sm:px-6 sm:py-10">
       <div className="mx-auto max-w-2xl">
-        <header className="flex items-center justify-between">
+        <header className="flex items-center gap-4">
+          <img
+            src="/haim-family.JPG"
+            alt="Haim and family"
+            className="h-16 w-16 shrink-0 rounded-2xl border-2 border-[#d99b4a] object-cover shadow-lg"
+          />
           <div>
             <p className="text-xs font-semibold uppercase tracking-[.24em] text-[#94652e]">
-              MasteryOS Math
+              Haim Math
             </p>
-            <h1 className="mt-1 font-serif text-4xl font-semibold">Hi, Haim</h1>
-          </div>
-          <div className="grid size-12 place-items-center rounded-2xl bg-[#10211f] text-[#d99b4a]">
-            <Sparkles className="size-6" />
+            <h1 className="mt-1 font-serif text-4xl font-semibold">
+              The Great Haim&apos;s Math Mastery
+            </h1>
           </div>
         </header>
         <section className="mt-10 overflow-hidden rounded-[2rem] bg-[#10211f] p-7 text-[#f8efe1] shadow-xl sm:p-10">

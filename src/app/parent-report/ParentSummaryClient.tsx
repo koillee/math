@@ -5,8 +5,14 @@ import {
   DAILY_PROGRESS_KEY,
   type DailyPracticeRecord,
   LEGACY_DAILY_PROGRESS_KEY,
+  feedbackLabels,
+  isConfidenceFlag,
   practiceSupportNote,
   recommendedFocus,
+  recommendedSkill,
+  skillDefinitions,
+  skillNameForLabel,
+  summarizeSkills,
   summarizeTopics,
   topicLabels,
 } from "@/lib/learning/practice-progress";
@@ -49,20 +55,32 @@ export function ParentSummaryClient() {
 
   const latest = records[0];
   const topicSummaries = useMemo(() => summarizeTopics(records), [records]);
+  const skillSummaries = useMemo(() => summarizeSkills(records), [records]);
   const focus = useMemo(() => recommendedFocus(records), [records]);
+  const skillFocus = useMemo(() => recommendedSkill(records), [records]);
   const total = records.reduce((sum, record) => sum + record.total, 0);
   const correct = records.reduce((sum, record) => sum + record.correct, 0);
   const firstTry = records.reduce(
     (sum, record) => sum + record.firstTryCorrect,
     0,
   );
-  const missedItems = records
+  const confidenceFlags = records.reduce(
+    (sum, record) =>
+      sum +
+      record.items.filter((item) => isConfidenceFlag(item.feedback)).length,
+    0,
+  );
+  const reviewItems = records
     .flatMap((record) =>
       record.items
-        .filter((item) => !item.correct)
+        .filter((item) => !item.correct || isConfidenceFlag(item.feedback))
         .map((item) => ({ ...item, date: record.date })),
     )
     .slice(0, 8);
+  const latestReviewItems =
+    latest?.items.filter(
+      (item) => !item.correct || isConfidenceFlag(item.feedback),
+    ) ?? [];
 
   function refresh() {
     setRecords(loadHistory());
@@ -97,8 +115,9 @@ export function ParentSummaryClient() {
               {correct}/{total} correct
             </h3>
             <p className="mt-2 leading-7 text-[#53615c]">
-              First-try fluency: {firstTry}/{total}. Treat this as a calm signal
-              for what to practise next, not as a score to worry about.
+              First-try fluency: {firstTry}/{total}. Haim marked{" "}
+              {confidenceFlags} question{confidenceFlags === 1 ? "" : "s"} as
+              guessed, confusing, or too hard.
             </p>
           </div>
           <button
@@ -128,6 +147,12 @@ export function ParentSummaryClient() {
             Result: {latest.correct}/{latest.total}, with{" "}
             {latest.firstTryCorrect} correct on the first try.
           </p>
+          {latestReviewItems.length > 0 ? (
+            <p className="mt-2 leading-7 text-[#53615c]">
+              Review signal: {latestReviewItems.length} question
+              {latestReviewItems.length === 1 ? "" : "s"} worth revisiting.
+            </p>
+          ) : null}
         </Card>
 
         <Card>
@@ -149,6 +174,14 @@ export function ParentSummaryClient() {
           <p className="mt-4 leading-7 text-[#53615c]">
             {practiceSupportNote(focus)}
           </p>
+          {skillFocus ? (
+            <div className="mt-4 rounded-2xl bg-[#fff8e9] p-4 text-sm text-[#754714]">
+              <p className="font-semibold">{skillFocus.skillName}</p>
+              <p className="mt-1 leading-6">
+                {skillDefinitions[skillFocus.skillId].parentMove}
+              </p>
+            </div>
+          ) : null}
         </Card>
 
         <Card>
@@ -159,7 +192,8 @@ export function ParentSummaryClient() {
                 <p className="font-semibold">{topicLabels[summary.topic]}</p>
                 <p className="mt-1 text-sm text-[#53615c]">
                   Practised {summary.practised}, missed {summary.missed},
-                  first-try correct {summary.firstTryCorrect}
+                  first-try correct {summary.firstTryCorrect}, confidence flags{" "}
+                  {summary.feedbackFlags}
                 </p>
               </div>
             ))}
@@ -168,18 +202,59 @@ export function ParentSummaryClient() {
       </div>
 
       <Card>
+        <h3 className="text-xl font-semibold">Skill pattern</h3>
+        {skillSummaries.length ? (
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {skillSummaries.slice(0, 6).map((summary) => (
+              <div
+                key={summary.skillId}
+                className="rounded-2xl bg-[#f7fbf7] p-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold">{summary.skillName}</p>
+                  <span className="text-sm text-[#64716c]">
+                    {topicLabels[summary.topic]}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-[#53615c]">
+                  Practised {summary.practised}, missed {summary.missed},
+                  first-try correct {summary.firstTryCorrect}, confidence flags{" "}
+                  {summary.confidenceFlags}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[#53615c]">
+                  {skillDefinitions[summary.skillId].learnFocus}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 leading-7 text-[#53615c]">
+            Newer practice sessions will show skill-level patterns here.
+          </p>
+        )}
+      </Card>
+
+      <Card>
         <h3 className="text-xl font-semibold">Questions to revisit</h3>
-        {missedItems.length ? (
+        {reviewItems.length ? (
           <div className="mt-4 grid gap-3">
-            {missedItems.map((item) => (
+            {reviewItems.map((item) => (
               <div
                 key={`${item.date}-${item.id}`}
                 className="rounded-2xl bg-[#fff3dd] p-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-semibold">{topicLabels[item.topic]}</p>
+                  <p className="font-semibold">
+                    {item.skillName ?? skillNameForLabel(item.label)}
+                  </p>
                   <span className="text-sm text-[#754714]">{item.date}</span>
                 </div>
+                <p className="mt-1 text-sm text-[#754714]">
+                  {topicLabels[item.topic]} · {item.difficulty ?? "Practice"}
+                  {item.feedback
+                    ? ` · Haim said: ${feedbackLabels[item.feedback]}`
+                    : ""}
+                </p>
                 <p className="mt-2 leading-7 text-[#754714]">{item.prompt}</p>
                 <p className="mt-2 text-sm text-[#754714]">
                   Haim chose {item.selected || "no answer"}; answer:{" "}

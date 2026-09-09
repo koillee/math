@@ -4,8 +4,12 @@ import {
   DAILY_PROGRESS_KEY,
   type DailyPracticeRecord,
   LEGACY_DAILY_PROGRESS_KEY,
+  type PracticeFeedback,
   type PracticeItemRecord,
   type PracticeTopic,
+  feedbackLabels,
+  skillIdForLabel,
+  skillNameForLabel,
   topicLabels,
 } from "@/lib/learning/practice-progress";
 import {
@@ -56,6 +60,12 @@ type LessonRecap = {
 };
 
 const stageOrder: Stage[] = ["goals", "lesson", "practice", "gugudan"];
+const feedbackChoices: PracticeFeedback[] = [
+  "understand",
+  "guessed",
+  "confusing",
+  "too-hard",
+];
 
 const friendlyFractions = [
   [1, 2],
@@ -2447,14 +2457,18 @@ export function DailyPractice() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [attempts, setAttempts] = useState<Record<string, number>>({});
+  const [feedback, setFeedback] = useState<Record<string, PracticeFeedback>>(
+    {},
+  );
   const [showHint, setShowHint] = useState<Record<string, boolean>>({});
   const [sessionHistory, setSessionHistory] = useState<DailyPracticeRecord[]>(
     [],
   );
-  const savedSummaryRef = useRef(false);
+  const savedSummaryRef = useRef("");
   const current = questions[index];
   const currentDifficulty = estimateQuestionDifficulty(current);
   const selected = answers[current.id] ?? "";
+  const selectedFeedback = feedback[current.id];
   const isChecked = checked[current.id] ?? false;
   const isCorrect = isChecked && isAnswerCorrect(current, selected);
   const completed = questions.every((question) => checked[question.id]);
@@ -2492,19 +2506,33 @@ export function DailyPractice() {
   }, []);
 
   useEffect(() => {
-    if (!(stage === "summary" || completed) || savedSummaryRef.current) return;
-    savedSummaryRef.current = true;
+    const saveSignature = JSON.stringify({
+      answers,
+      attempts,
+      completed,
+      feedback,
+      refresh,
+      topic: todayTopic,
+    });
+    if (!(stage === "summary" || completed) || !completed) return;
+    if (savedSummaryRef.current === saveSignature) return;
+    savedSummaryRef.current = saveSignature;
     const items: PracticeItemRecord[] = allQuestions.map((question) => {
       const selectedAnswer = answers[question.id] ?? "";
+      const skillId = skillIdForLabel(question.label);
       return {
         id: question.id,
         topic: question.topic,
+        skillId,
+        skillName: skillNameForLabel(question.label),
         label: question.label,
         prompt: question.prompt,
         answer: question.answer,
         selected: selectedAnswer,
         correct: isAnswerCorrect(question, selectedAnswer),
         attempts: attempts[question.id] ?? 0,
+        difficulty: estimateQuestionDifficulty(question),
+        feedback: feedback[question.id],
       };
     });
     const record: DailyPracticeRecord = {
@@ -2539,6 +2567,7 @@ export function DailyPractice() {
     attempts,
     completed,
     correctCount,
+    feedback,
     firstTryCorrectCount,
     lesson.title,
     needsReview,
@@ -2551,6 +2580,11 @@ export function DailyPractice() {
   function selectAnswer(answer: string) {
     if (isChecked && isAnswerCorrect(current, selected)) return;
     setAnswers((all) => ({ ...all, [current.id]: answer }));
+    setFeedback((all) => {
+      const nextFeedback = { ...all };
+      delete nextFeedback[current.id];
+      return nextFeedback;
+    });
     if (isChecked) {
       setChecked((all) => ({ ...all, [current.id]: false }));
     }
@@ -2585,13 +2619,14 @@ export function DailyPractice() {
   }
 
   function restart() {
-    savedSummaryRef.current = false;
+    savedSummaryRef.current = "";
     setRefresh((value) => value + 1);
     setStage("goals");
     setIndex(0);
     setAnswers({});
     setChecked({});
     setAttempts({});
+    setFeedback({});
     setShowHint({});
   }
 
@@ -2613,6 +2648,11 @@ export function DailyPractice() {
       const nextAnswers = { ...all };
       delete nextAnswers[current.id];
       return nextAnswers;
+    });
+    setFeedback((all) => {
+      const nextFeedback = { ...all };
+      delete nextFeedback[current.id];
+      return nextFeedback;
     });
     setShowHint((all) => ({ ...all, [current.id]: true }));
   }
@@ -2780,7 +2820,7 @@ export function DailyPractice() {
                   <p
                     className={`mt-1 text-sm ${index === position ? "text-[#d8cdbb]" : "text-[#53615c]"}`}
                   >
-                    {question.label}
+                    {skillNameForLabel(question.label)}
                   </p>
                 </button>
               );
@@ -2849,6 +2889,9 @@ export function DailyPractice() {
                   <h2 className="mt-2 font-serif text-4xl font-semibold leading-tight">
                     {current.prompt}
                   </h2>
+                  <p className="mt-2 text-sm font-semibold text-[#53615c]">
+                    Skill: {skillNameForLabel(current.label)}
+                  </p>
                 </div>
                 <span className="rounded-full bg-[#dceaf0] px-4 py-2 text-sm font-semibold text-[#24495a]">
                   {index + 1} of {questions.length}
@@ -2956,6 +2999,29 @@ export function DailyPractice() {
                       Parent note
                     </p>
                     <p className="mt-2 leading-6">{current.parentNote}</p>
+                  </div>
+                  <div className="mt-4 rounded-2xl bg-white/60 p-4">
+                    <p className="font-semibold">How did this feel?</p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {feedbackChoices.map((choice) => (
+                        <button
+                          key={choice}
+                          onClick={() =>
+                            setFeedback((all) => ({
+                              ...all,
+                              [current.id]: choice,
+                            }))
+                          }
+                          className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
+                            selectedFeedback === choice
+                              ? "border-[#10211f] bg-[#10211f] text-[#f8efe1]"
+                              : "border-[#d8cdbb] bg-white/75 text-[#53615c] hover:border-[#2f6173]"
+                          }`}
+                        >
+                          {feedbackLabels[choice]}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : null}

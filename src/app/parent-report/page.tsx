@@ -2,7 +2,7 @@ import { AppShell, PageHeader } from "@/components/masteryos/chrome";
 import { ParentSummaryClient } from "./ParentSummaryClient";
 
 export const metadata = {
-  title: "Parent Summary | Haim Math",
+  title: "Parent Summary | The Great Haim's Math Mastery",
   description: "A simple parent view of Haim's recent maths practice.",
 };
 

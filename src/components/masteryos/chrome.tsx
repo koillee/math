@@ -42,6 +42,7 @@ const simpleNav = [
   ["/gugudan", "구구단"],
   ["/math-map", "Math Map"],
   ["/lessons", "Lessons"],
+  ["/parent-report", "Parent Report"],
 ] as const;
 
 export function AppShell({
@@ -95,32 +96,36 @@ export function AppShell({
           <header className="mb-5 rounded-[2rem] border border-[#d8cdbb] bg-[#10211f] p-5 text-[#f8efe1] shadow-xl shadow-[#10211f]/10">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <Link href="/" className="flex items-center gap-3">
-                <div className="grid size-11 place-items-center rounded-2xl bg-[#d99b4a] text-[#10211f]">
-                  <Brain className="size-6" />
-                </div>
+                <img
+                  src="/haim-family.JPG"
+                  alt="Haim and family"
+                  className="h-14 w-14 shrink-0 rounded-2xl border-2 border-[#d99b4a] object-cover shadow-lg"
+                />
                 <div>
                   <p className="text-xs uppercase tracking-[0.28em] text-[#d9c8aa]">
-                    MasteryOS
+                    Haim Math
                   </p>
                   <h1 className="font-serif text-2xl font-semibold">
-                    Daily Tutor
+                    The Great Haim&apos;s Math Mastery
                   </h1>
                 </div>
               </Link>
-              <nav className="flex flex-wrap gap-2">
-                {simpleNav.map(([href, label]) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={cn(
-                      "rounded-full px-4 py-2 text-sm font-semibold text-[#e5d8c2] transition hover:bg-white/10",
-                      active === href && "bg-[#f6f0e5] text-[#10211f]",
-                    )}
-                  >
-                    {label}
-                  </Link>
-                ))}
-              </nav>
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <nav className="flex flex-wrap justify-end gap-2">
+                  {simpleNav.map(([href, label]) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={cn(
+                        "rounded-full px-4 py-2 text-sm font-semibold text-[#e5d8c2] transition hover:bg-white/10",
+                        active === href && "bg-[#f6f0e5] text-[#10211f]",
+                      )}
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
             </div>
           </header>
         )}
