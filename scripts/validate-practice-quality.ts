@@ -1,3 +1,4 @@
+import "./validate-daily-plan";
 import {
   buildDailySetFromSeed,
   estimateQuestionDifficulty,
