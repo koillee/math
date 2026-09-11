@@ -1,6 +1,16 @@
 "use client";
 
 import {
+  DAILY_PROGRESS_KEY,
+  type DailyPracticeRecord,
+  LEGACY_DAILY_PROGRESS_KEY,
+  type PracticeSkillId,
+  type PracticeTopic,
+  skillDefinitions,
+  summarizeSkills,
+  topicLabels,
+} from "@/lib/learning/practice-progress";
+import {
   ArrowRight,
   BookOpenCheck,
   CheckCircle2,
@@ -13,9 +23,9 @@ import {
   Ruler,
   Sparkles,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-type ModuleId = "multiplication" | "fractions" | "decimals" | "percentages";
+type ModuleId = PracticeTopic;
 
 type WorkedExample = {
   problem: string;
@@ -49,6 +59,173 @@ type LearningModule = {
   examples: WorkedExample[];
   guidedCheck: GuidedCheck;
   parentPrompt: string;
+};
+
+type SkillLesson = {
+  steps: string[];
+  example: string;
+  visual: string;
+};
+
+const skillLessonDetails: Record<PracticeSkillId, SkillLesson> = {
+  "fact-families": {
+    steps: [
+      "Write the multiplication fact first.",
+      "Turn it around to see the same total.",
+      "Divide the total by one factor to find the other factor.",
+    ],
+    example: "6 x 7 = 42, so 42 / 6 = 7 and 42 / 7 = 6.",
+    visual: "Picture 42 dots arranged as 6 rows of 7.",
+  },
+  "equal-groups": {
+    steps: [
+      "Find the number of groups.",
+      "Find the size of one group.",
+      "Multiply to find the total.",
+    ],
+    example: "5 craft boxes with 8 beads each means 5 x 8 = 40 beads.",
+    visual: "Picture matching boxes, each holding the same number.",
+  },
+  "missing-factors": {
+    steps: [
+      "Read the total.",
+      "Divide by the factor you know.",
+      "Multiply back to prove the missing factor works.",
+    ],
+    example: "9 x ? = 72 becomes 72 / 9 = 8.",
+    visual: "Picture one empty slot in a multiplication sentence.",
+  },
+  "division-meaning": {
+    steps: [
+      "Name the total.",
+      "Decide whether you know the group count or group size.",
+      "Use multiplication to check the division answer.",
+    ],
+    example: "48 stickers in 6 equal bags means 48 / 6 = 8 in each bag.",
+    visual: "Picture sharing a total into equal containers.",
+  },
+  arrays: {
+    steps: ["Count rows.", "Count columns.", "Multiply rows by columns."],
+    example: "4 rows of 9 seats means 4 x 9 = 36 seats.",
+    visual: "Picture a neat rectangle of rows and columns.",
+  },
+  "fraction-of-amount": {
+    steps: [
+      "Start with the whole amount.",
+      "Divide by the denominator.",
+      "Multiply by the numerator.",
+    ],
+    example: "3/4 of 20 is 20 / 4 = 5, then 5 x 3 = 15.",
+    visual: "Picture the amount split into equal groups.",
+  },
+  "equivalent-fractions": {
+    steps: [
+      "Keep the whole the same size.",
+      "Multiply the top and bottom by the same number.",
+      "Check that the shaded amount did not change.",
+    ],
+    example: "1/2 = 2/4 = 3/6.",
+    visual: "Picture the same bar cut into more equal pieces.",
+  },
+  "simplifying-fractions": {
+    steps: [
+      "Find a number that divides the numerator and denominator.",
+      "Divide both parts by that number.",
+      "Stop when no common factor is left.",
+    ],
+    example: "6/8 simplifies to 3/4 because both parts divide by 2.",
+    visual: "Picture combining smaller equal pieces into bigger pieces.",
+  },
+  "fraction-number-line": {
+    steps: [
+      "Draw 0 and 1.",
+      "Split the line into denominator-sized equal jumps.",
+      "Count numerator jumps from 0.",
+    ],
+    example: "3/5 sits on the third jump when the line has 5 equal parts.",
+    visual: "Picture stepping stones between 0 and 1.",
+  },
+  "comparing-fractions": {
+    steps: [
+      "Look for same denominators first.",
+      "Use half as a benchmark.",
+      "Draw bars if the sizes are close.",
+    ],
+    example: "5/8 is more than half, but 3/8 is less than half.",
+    visual: "Picture two same-length bars shaded by different amounts.",
+  },
+  "decimal-comparison": {
+    steps: [
+      "Line up the decimal points.",
+      "Add trailing zeros only to compare.",
+      "Compare from left to right by place value.",
+    ],
+    example: "0.7 = 0.70, so 0.70 is bigger than 0.56.",
+    visual: "Picture tenths and hundredths columns.",
+  },
+  "decimal-operations": {
+    steps: [
+      "Stack numbers with decimal points aligned.",
+      "Add or subtract column by column.",
+      "Bring the decimal point straight down.",
+    ],
+    example: "3.45 + 1.2 is 3.45 + 1.20 = 4.65.",
+    visual: "Picture money columns lined up neatly.",
+  },
+  "decimal-place-value": {
+    steps: [
+      "Read the whole number part.",
+      "Name tenths, hundredths, or thousandths.",
+      "Use place-value words before calculating.",
+    ],
+    example: "0.36 means 36 hundredths.",
+    visual: "Picture columns on both sides of the decimal point.",
+  },
+  "powers-of-10": {
+    steps: [
+      "Decide if the number is becoming larger or smaller.",
+      "Move digits through place-value columns.",
+      "Check the number of moves: 10 is one, 100 is two, 1000 is three.",
+    ],
+    example: "0.48 x 100 = 48.",
+    visual: "Picture digits sliding through place-value rooms.",
+  },
+  "benchmark-percent": {
+    steps: [
+      "Name the whole.",
+      "Use 50%, 25%, 10%, or 5% as an anchor.",
+      "Combine anchors when needed.",
+    ],
+    example: "30% of 80 is 10% + 10% + 10%, so 8 + 8 + 8 = 24.",
+    visual: "Picture a 100-square grid grouped into friendly chunks.",
+  },
+  "percent-conversion": {
+    steps: [
+      "Write the percent over 100.",
+      "Simplify the fraction if possible.",
+      "Move between fraction, decimal, and percent forms.",
+    ],
+    example: "40% = 40/100 = 2/5 = 0.4.",
+    visual: "Picture 40 shaded squares out of 100.",
+  },
+  discounts: {
+    steps: [
+      "Find the discount amount.",
+      "Check whether the question asks for amount off or final price.",
+      "Subtract the discount from the original price if needed.",
+    ],
+    example: "20% off HK$150 is HK$30 off, so the sale price is HK$120.",
+    visual: "Picture a price tag with one part crossed out.",
+  },
+  "find-the-whole": {
+    steps: [
+      "Name the percent part you know.",
+      "Convert the percent into a friendly fraction.",
+      "Rebuild the whole by making all the equal parts.",
+    ],
+    example: "15 is 25% of a number. 25% is 1/4, so the whole is 60.",
+    visual: "Picture one known piece, then rebuild all four pieces.",
+  },
 };
 
 const modules: LearningModule[] = [
@@ -223,7 +400,7 @@ const modules: LearningModule[] = [
     id: "percentages",
     title: "Percentages",
     shortTitle: "Percentages",
-    status: "Coming soon",
+    status: "Build benchmarks",
     icon: Percent,
     color: "bg-[#f2d9d3] text-[#7f3526]",
     bigIdea:
@@ -276,6 +453,37 @@ const modules: LearningModule[] = [
   },
 ];
 
+const skillEntries = Object.entries(skillDefinitions) as [
+  PracticeSkillId,
+  (typeof skillDefinitions)[PracticeSkillId],
+][];
+
+function loadHistory() {
+  try {
+    const saved = window.localStorage.getItem(DAILY_PROGRESS_KEY);
+    if (saved) return JSON.parse(saved).slice(0, 20) as DailyPracticeRecord[];
+    const legacy = window.localStorage.getItem(LEGACY_DAILY_PROGRESS_KEY);
+    if (!legacy) return [];
+    return (JSON.parse(legacy) as Partial<DailyPracticeRecord>[])
+      .filter((record) => record.date && record.topic)
+      .map((record, index) => ({
+        id: `legacy-${record.date}-${index}`,
+        date: String(record.date),
+        completedAt: String(record.completedAt ?? record.date),
+        topic: record.topic as DailyPracticeRecord["topic"],
+        lessonTitle: "Earlier daily practice",
+        total: Number(record.total ?? 0),
+        correct: Number(record.correct ?? 0),
+        firstTryCorrect: Number(record.firstTryCorrect ?? record.correct ?? 0),
+        needsReview: (record.needsReview ??
+          []) as DailyPracticeRecord["needsReview"],
+        items: record.items ?? [],
+      }));
+  } catch {
+    return [];
+  }
+}
+
 function ModuleVisual({ module }: { module: LearningModule }) {
   const columns = module.id === "percentages" ? "grid-cols-10" : "grid-cols-8";
   return (
@@ -303,17 +511,43 @@ function ModuleVisual({ module }: { module: LearningModule }) {
 
 export function LessonModules() {
   const [activeId, setActiveId] = useState<ModuleId>("multiplication");
+  const [activeSkillId, setActiveSkillId] =
+    useState<PracticeSkillId>("fact-families");
   const [selected, setSelected] = useState("");
   const [checked, setChecked] = useState(false);
+  const [records, setRecords] = useState<DailyPracticeRecord[]>([]);
   const active = useMemo(
     () => modules.find((module) => module.id === activeId) ?? modules[0],
     [activeId],
   );
+  const activeSkills = useMemo(
+    () =>
+      skillEntries.filter(([, definition]) => definition.topic === activeId),
+    [activeId],
+  );
+  const skillSummaries = useMemo(() => summarizeSkills(records), [records]);
+  const activeSkill =
+    activeSkills.find(([skillId]) => skillId === activeSkillId) ??
+    activeSkills[0];
+  const activeSkillSummary = skillSummaries.find(
+    (summary) => summary.skillId === activeSkill?.[0],
+  );
+  const activeSkillLesson = activeSkill
+    ? skillLessonDetails[activeSkill[0]]
+    : null;
   const ActiveIcon = active.icon;
   const isCorrect = checked && selected === active.guidedCheck.answer;
 
+  useEffect(() => {
+    setRecords(loadHistory());
+  }, []);
+
   function chooseModule(id: ModuleId) {
     setActiveId(id);
+    const nextSkill = skillEntries.find(
+      ([, definition]) => definition.topic === id,
+    );
+    if (nextSkill) setActiveSkillId(nextSkill[0]);
     setSelected("");
     setChecked(false);
   }
@@ -375,6 +609,115 @@ export function LessonModules() {
           );
         })}
       </section>
+
+      {activeSkill && activeSkillLesson ? (
+        <section className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
+          <aside className="rounded-[2rem] border border-[#dfd3c0] bg-white/80 p-5 shadow-sm">
+            <p className="text-sm font-semibold text-[#94652e]">
+              {topicLabels[activeId]} skills
+            </p>
+            <div className="mt-4 grid gap-2">
+              {activeSkills.map(([skillId, definition]) => {
+                const summary = skillSummaries.find(
+                  (item) => item.skillId === skillId,
+                );
+                return (
+                  <button
+                    key={skillId}
+                    onClick={() => setActiveSkillId(skillId)}
+                    className={`rounded-2xl border p-4 text-left transition ${
+                      activeSkill[0] === skillId
+                        ? "border-[#10211f] bg-[#10211f] text-[#f8efe1]"
+                        : "border-[#dfd3c0] bg-[#fffdf8] text-[#17211f] hover:border-[#2f6173]"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold">{definition.name}</p>
+                      {summary ? (
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                            activeSkill[0] === skillId
+                              ? "bg-[#d99b4a] text-[#10211f]"
+                              : "bg-[#dceaf0] text-[#24495a]"
+                          }`}
+                        >
+                          {summary.firstTryCorrect}/{summary.practised}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p
+                      className={`mt-2 text-sm leading-5 ${
+                        activeSkill[0] === skillId
+                          ? "text-[#d8cdbb]"
+                          : "text-[#53615c]"
+                      }`}
+                    >
+                      {definition.learnFocus}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+
+          <article className="rounded-[2rem] border border-[#dfd3c0] bg-white/80 p-6 shadow-sm sm:p-8">
+            <p className="text-sm font-semibold text-[#94652e]">Focus lesson</p>
+            <h2 className="mt-2 font-serif text-4xl font-semibold leading-tight">
+              {activeSkill[1].name}
+            </h2>
+            <p className="mt-4 text-lg leading-7 text-[#53615c]">
+              {activeSkill[1].learnFocus}
+            </p>
+
+            <div className="mt-6 rounded-2xl bg-[#f7fbf7] p-5">
+              <p className="font-semibold text-[#24495a]">Picture it</p>
+              <p className="mt-2 leading-6 text-[#41504b]">
+                {activeSkillLesson.visual}
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              {activeSkillLesson.steps.map((step, index) => (
+                <p
+                  key={step}
+                  className="flex gap-3 rounded-2xl bg-[#fff8e9] p-4 leading-6 text-[#53615c]"
+                >
+                  <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#d99b4a] text-sm font-bold text-[#10211f]">
+                    {index + 1}
+                  </span>
+                  <span>{step}</span>
+                </p>
+              ))}
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl border border-[#cfded7] bg-[#f7fbf7] p-4">
+                <p className="font-semibold text-[#24495a]">Worked example</p>
+                <p className="mt-2 leading-6 text-[#41504b]">
+                  {activeSkillLesson.example}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-[#dfd3c0] bg-[#fff3dd] p-4">
+                <p className="font-semibold text-[#754714]">Parent move</p>
+                <p className="mt-2 leading-6 text-[#754714]">
+                  {activeSkill[1].parentMove}
+                </p>
+              </div>
+            </div>
+
+            {activeSkillSummary ? (
+              <div className="mt-5 rounded-2xl bg-[#10211f] p-4 text-[#f8efe1]">
+                <p className="font-semibold">Recent signal</p>
+                <p className="mt-2 leading-6 text-[#d8cdbb]">
+                  Practised {activeSkillSummary.practised}, missed{" "}
+                  {activeSkillSummary.missed}, confidence flags{" "}
+                  {activeSkillSummary.confidenceFlags}.
+                </p>
+              </div>
+            ) : null}
+          </article>
+        </section>
+      ) : null}
 
       <section className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
         <article className="rounded-[2rem] border border-[#dfd3c0] bg-white/80 p-6 shadow-sm sm:p-8">

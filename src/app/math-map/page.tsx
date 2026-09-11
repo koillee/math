@@ -141,7 +141,7 @@ const domains = [
 ] as const;
 
 export const metadata = {
-  title: "Math Map | Haim Math",
+  title: "Math Map | The Great Haim's Math Mastery",
   description: "A simple Year 6 maths coverage map for Haim and parents.",
 };
 

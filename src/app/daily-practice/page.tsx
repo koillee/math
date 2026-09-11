@@ -2,7 +2,7 @@ import { AppShell } from "@/components/masteryos/chrome";
 import { DailyPractice } from "./DailyPractice";
 
 export const metadata = {
-  title: "Daily Practice | Haim Math",
+  title: "Daily Practice | The Great Haim's Math Mastery",
   description: "A short mixed maths practice session for Haim.",
 };
 

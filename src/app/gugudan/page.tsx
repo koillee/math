@@ -2,7 +2,7 @@ import { AppShell } from "@/components/masteryos/chrome";
 import { GugudanPractice } from "./GugudanPractice";
 
 export const metadata = {
-  title: "Gugudan Practice | Haim Math",
+  title: "Gugudan Practice | The Great Haim's Math Mastery",
   description: "Smart one-digit multiplication practice for Haim.",
 };
 

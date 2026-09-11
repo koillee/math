@@ -2,7 +2,7 @@ import { AppShell } from "@/components/masteryos/chrome";
 import { LessonModules } from "./LessonModules";
 
 export const metadata = {
-  title: "Lessons | Haim Math",
+  title: "Lessons | The Great Haim's Math Mastery",
   description: "Teaching-first maths modules for Haim.",
 };
 
