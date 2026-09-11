@@ -2,8 +2,13 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { ensureSeedData } from "@/lib/learning/seed";
+import { isMvpResetAllowed } from "@/lib/server/production-safety";
 
 export async function POST() {
+  if (!isMvpResetAllowed()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   try {
     const student = await ensureSeedData();
     await prisma.$transaction([

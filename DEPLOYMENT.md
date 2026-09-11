@@ -18,11 +18,29 @@ After the standalone web-app update, delete the old Home Screen shortcut first. 
 
 The zip intentionally excludes `.env` and database credentials.
 
-You must add this environment variable in Vercel:
+You must add these environment variables in Vercel before deploying this
+version:
 
 ```txt
 DATABASE_URL=your_postgres_database_connection_string
+APP_ACCESS_PASSWORD=use_a_strong_password_from_your_password_manager
 ```
+
+`APP_ACCESS_PASSWORD` keeps every page and API private behind the browser's
+standard username/password prompt. The default username is `family`. To choose
+a different username, also set `APP_ACCESS_USERNAME`. Store these values in
+Vercel environment settings, never in GitHub or a committed `.env` file.
+
+The access guard fails closed: a production build without
+`APP_ACCESS_PASSWORD` shows a safe setup message instead of student data. Set
+the variable for both Production and Preview environments before merging. A
+separate Preview `DATABASE_URL` is still required before running data-changing
+tests there.
+
+The `/api/reset` endpoint is disabled by default and is always disabled in the
+Vercel Production environment. It can run only when `ALLOW_MVP_RESET=true` is
+set in local development, or later in a Vercel Preview that has its own
+disposable database. Never set `ALLOW_MVP_RESET` for Production.
 
 Use a hosted PostgreSQL database such as Vercel Postgres, Neon, Supabase Postgres, or another Postgres provider.
 
@@ -123,9 +141,12 @@ http://localhost:3000
 ```bash
 npm run build
 npm run lint
+npm run test:safe
 ```
 
-The MVP smoke test can be run against a live URL:
+The MVP smoke test resets its target database before it runs. Use it only with
+a disposable local or Preview database where `ALLOW_MVP_RESET=true` has been
+set deliberately:
 
 ```bash
 npm run test:mvp -- https://your-vercel-url.vercel.app

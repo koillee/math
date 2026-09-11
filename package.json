@@ -5,13 +5,15 @@
   "scripts": {
     "dev": "next dev -H 0.0.0.0 --turbopack",
     "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
-    "build": "prisma generate; BUILD_DIR=.next-build next build",
+    "build": "prisma generate && BUILD_DIR=.next-build next build",
     "build:local": "BUILD_DIR=.next-build next build",
-    "lint": "bunx biome lint --write && bunx tsc --noEmit",
-    "test:item-bank": "bun scripts/validate-item-bank.ts",
+    "lint": "biome lint . && tsc --noEmit --incremental false",
+    "test:item-bank": "tsx scripts/validate-item-bank.ts",
     "test:practice-quality": "tsx scripts/validate-practice-quality.ts",
+    "test:production-safety": "tsx scripts/validate-production-safety.ts",
+    "test:safe": "npm run test:production-safety && npm run test:item-bank && npm run test:practice-quality",
     "test:mvp": "node scripts/mvp-smoke.mjs",
-    "format": "bunx biome format --write"
+    "format": "biome format --write ."
   },
   "dependencies": {
     "@prisma/client": "6.19.0",
