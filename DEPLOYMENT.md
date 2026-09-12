@@ -24,18 +24,32 @@ version:
 ```txt
 DATABASE_URL=your_postgres_database_connection_string
 APP_ACCESS_PASSWORD=use_a_strong_password_from_your_password_manager
+APP_SESSION_SECRET=use_another_random_value_with_at_least_32_characters
 ```
 
-`APP_ACCESS_PASSWORD` keeps every page and API private behind the browser's
-standard username/password prompt. The default username is `family`. To choose
-a different username, also set `APP_ACCESS_USERNAME`. Store these values in
-Vercel environment settings, never in GitHub or a committed `.env` file.
+`APP_ACCESS_PASSWORD` keeps every page and API private behind the app's family
+login screen. The default username is `family`. To choose a different
+username, also set `APP_ACCESS_USERNAME`. After a successful login, the app
+stores only a signed, `HttpOnly`, `Secure`, `SameSite=Lax` session cookie
+for 180 days. It never stores the password in browser storage or client code.
+
+`APP_SESSION_SECRET` is recommended and should be a separate random value of
+at least 32 characters (a password-manager-generated value is suitable). If it
+is omitted, the server safely derives the signing material from
+`APP_ACCESS_PASSWORD`, so existing deployments continue to work. Changing the
+access password or session secret signs out previously logged-in devices.
+Store all of these values in Vercel environment settings, never in GitHub or a
+committed `.env` file.
 
 The access guard fails closed: a production build without
 `APP_ACCESS_PASSWORD` shows a safe setup message instead of student data. Set
 the variable for both Production and Preview environments before merging. A
 separate Preview `DATABASE_URL` is still required before running data-changing
 tests there.
+
+The login screen is designed for the iPad and works with Apple Passwords.
+Opening **로그인 설정** at the bottom of the home page provides
+**이 iPad의 로그인 지우기** when a device needs to be signed out.
 
 The `/api/reset` endpoint is disabled by default and is always disabled in the
 Vercel Production environment. It can run only when `ALLOW_MVP_RESET=true` is
@@ -66,6 +80,9 @@ Option B — from iPad:
 3. Framework preset: **Next.js**.
 4. Add environment variable:
    - `DATABASE_URL`
+   - `APP_ACCESS_USERNAME` (currently `family`)
+   - `APP_ACCESS_PASSWORD`
+   - `APP_SESSION_SECRET` (recommended)
 5. Build command can remain the default from `package.json`:
    - `npm run build` or `bun run build`
 6. Deploy.

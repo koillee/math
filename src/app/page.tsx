@@ -135,6 +135,11 @@ export default function HaimHome() {
         <p className="mt-10 text-center text-sm text-[#64716c]">
           You only need to do five. Extra practice is always your choice.
         </p>
+        <p className="mt-4 text-center text-xs text-[#7a817d]">
+          <Link href="/login" className="underline underline-offset-4">
+            로그인 설정
+          </Link>
+        </p>
       </div>
     </main>
   );
