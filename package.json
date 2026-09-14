@@ -12,7 +12,8 @@
     "test:practice-quality": "tsx scripts/validate-practice-quality.ts",
     "test:production-safety": "tsx scripts/validate-production-safety.ts",
     "test:reflection-pilot": "tsx scripts/validate-reflection-pilot.ts",
-    "test:safe": "npm run test:production-safety && npm run test:reflection-pilot && npm run test:item-bank && npm run test:practice-quality",
+    "test:practice-history": "tsx scripts/validate-practice-history.ts",
+    "test:safe": "npm run test:production-safety && npm run test:practice-history && npm run test:reflection-pilot && npm run test:item-bank && npm run test:practice-quality",
     "test:mvp": "node scripts/mvp-smoke.mjs",
     "format": "biome format --write ."
   },

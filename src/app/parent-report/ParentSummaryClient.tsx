@@ -8,6 +8,7 @@ import {
   practiceDate,
   resolveDailyPlan,
 } from "@/lib/learning/daily-plan";
+import { syncPracticeHistory } from "@/lib/learning/practice-history-client";
 import {
   type DailyPracticeRecord,
   type PracticeItemRecord,
@@ -39,7 +40,7 @@ import {
   Target,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   koreanFeedback,
   koreanParentMoves,
@@ -49,6 +50,7 @@ import {
 } from "./parent-report-ko";
 
 type ReportLanguage = "ko" | "en";
+type HistoryStatus = "checking" | "synced" | "local-only";
 const REPORT_LANGUAGE_KEY = "haim-parent-report-language";
 
 type CoachingDetail = {
@@ -221,15 +223,30 @@ export function ParentSummaryClient() {
   const [records, setRecords] = useState<DailyPracticeRecord[]>([]);
   const [language, setLanguage] = useState<ReportLanguage>("ko");
   const [tomorrowPlan, setTomorrowPlan] = useState<DailyPlan | null>(null);
+  const [historyStatus, setHistoryStatus] = useState<HistoryStatus>("checking");
+
+  const updateHistory = useCallback(async () => {
+    const localHistory = loadPracticeHistory();
+    setRecords(localHistory);
+    setTomorrowPlan(
+      resolveDailyPlan(practiceDate(new Date(), 1), localHistory, "preview"),
+    );
+    setHistoryStatus("checking");
+    try {
+      const mergedHistory = await syncPracticeHistory(localHistory);
+      setRecords(mergedHistory);
+      setTomorrowPlan(
+        resolveDailyPlan(practiceDate(new Date(), 1), mergedHistory, "preview"),
+      );
+      setHistoryStatus("synced");
+    } catch {
+      // The local report remains available if the network is temporarily down.
+      setHistoryStatus("local-only");
+    }
+  }, []);
 
   useEffect(() => {
-    const update = () => {
-      const history = loadPracticeHistory();
-      setRecords(history);
-      setTomorrowPlan(
-        resolveDailyPlan(practiceDate(new Date(), 1), history, "preview"),
-      );
-    };
+    const update = () => void updateHistory();
     update();
     window.addEventListener("focus", update);
     window.addEventListener("storage", update);
@@ -247,7 +264,7 @@ export function ParentSummaryClient() {
       window.removeEventListener("storage", update);
       window.clearInterval(timer);
     };
-  }, []);
+  }, [updateHistory]);
 
   const t = (en: string, ko: string) => (language === "ko" ? ko : en);
   const topics = language === "ko" ? koreanTopics : topicLabels;
@@ -330,11 +347,7 @@ export function ParentSummaryClient() {
             : [];
 
   function refresh() {
-    const history = loadPracticeHistory();
-    setRecords(history);
-    setTomorrowPlan(
-      resolveDailyPlan(practiceDate(new Date(), 1), history, "preview"),
-    );
+    void updateHistory();
   }
 
   return (
@@ -364,9 +377,22 @@ export function ParentSummaryClient() {
       >
         <p>
           {t(
-            "A practical home view based on the practice completed in this browser. It is a learning signal, not a grade.",
-            "이 브라우저에서 완료한 연습을 바탕으로 집에서 도울 방법을 안내합니다. 성적표가 아닌 학습 참고 자료예요.",
+            "A practical home view based on Haim's saved practice across her devices. It is a learning signal, not a grade.",
+            "하임이가 여러 기기에서 완료한 연습 기록을 바탕으로 집에서 도울 방법을 안내합니다. 성적표가 아닌 학습 참고 자료예요.",
           )}
+        </p>
+        <p aria-live="polite" className="mt-2 text-sm font-semibold">
+          {historyStatus === "checking"
+            ? t("Updating saved practice...", "저장된 학습 기록 확인 중...")
+            : historyStatus === "synced"
+              ? t(
+                  "Saved practice is up to date",
+                  "저장된 학습 기록이 최신 상태예요",
+                )
+              : t(
+                  "This device's practice is available. Online backup will retry automatically.",
+                  "이 기기의 학습 기록을 보여드려요. 온라인 백업은 자동으로 다시 시도합니다.",
+                )}
         </p>
       </PageHeader>
       {!records.length ? (
@@ -377,8 +403,8 @@ export function ParentSummaryClient() {
             </h3>
             <p className="mt-3 leading-7 text-[#53615c]">
               {t(
-                "Once Haim finishes Daily Practice on this browser, this page will show what she worked on, what felt tricky, and what to review next.",
-                "하임이가 이 브라우저에서 오늘의 연습을 마치면, 학습한 내용과 어려워한 부분, 다음 복습 내용을 확인할 수 있어요.",
+                "Once Haim finishes Daily Practice, this page will show what she worked on, what felt tricky, and what to review next.",
+                "하임이가 오늘의 연습을 마치면, 학습한 내용과 어려워한 부분, 다음 복습 내용을 확인할 수 있어요.",
               )}
             </p>
             <Link
@@ -829,8 +855,8 @@ function ParentPlanPreview({
       </p>
       <p className="mt-2 text-sm leading-6 text-[#53615c]">
         {t(
-          "This is tomorrow's first practice set in this browser. More practice before it starts may update the plan. Keep preparation light; answers are for parents.",
-          "이 브라우저에서 내일 처음 시작할 수업과 문제예요. 시작 전 추가 연습을 하면 계획이 갱신될 수 있어요. 예습은 가볍게, 정답은 부모님 참고용으로 봐주세요.",
+          "This is tomorrow's first planned lesson and practice set. More practice before it starts may update the plan. Keep preparation light; answers are for parents.",
+          "내일 처음 시작할 예정인 수업과 문제예요. 시작 전 추가 연습을 하면 계획이 갱신될 수 있어요. 예습은 가볍게, 정답은 부모님 참고용으로 봐주세요.",
         )}
       </p>
       <div lang="en" className="mt-5 space-y-3 border-t border-[#cfded7] pt-4">

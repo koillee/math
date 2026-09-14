@@ -12,6 +12,7 @@ export async function POST() {
   try {
     const student = await ensureSeedData();
     await prisma.$transaction([
+      prisma.simplePracticeSession.deleteMany({ where: { studentId: student.id } }),
       prisma.dailyPracticeSession.deleteMany({ where: { studentId: student.id } }),
       prisma.evidenceEvent.deleteMany({ where: { studentId: student.id } }),
       prisma.studentMisconception.deleteMany({ where: { studentId: student.id } }),

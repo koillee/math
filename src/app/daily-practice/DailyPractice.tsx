@@ -52,6 +52,10 @@ import {
   findDueReflectionReview,
 } from "@/lib/learning/reflection-pilot";
 import {
+  savePracticeRecordToDatabase,
+  syncPracticeHistory,
+} from "@/lib/learning/practice-history-client";
+import {
   type ReflectionCompletion,
   ReflectionMission,
 } from "./ReflectionMission";
@@ -69,6 +73,7 @@ type Stage =
   | "reflection"
   | "gugudan"
   | "summary";
+type SaveStatus = "idle" | "saving" | "saved" | "local-only";
 
 const stageOrder: Stage[] = ["goals", "lesson", "practice", "reflection"];
 const feedbackChoices: PracticeFeedback[] = [
@@ -386,7 +391,10 @@ export function DailyPractice() {
   const [reflectionStartedAt, setReflectionStartedAt] = useState("");
   const [reflectionCompletion, setReflectionCompletion] =
     useState<ReflectionCompletion>();
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const savedSummaryRef = useRef("");
+  const saveRequestRef = useRef(0);
+  const clientSessionIdRef = useRef("");
   const current = questions[index];
   const currentDifficulty = estimateQuestionDifficulty(current);
   const selected = answers[current.id] ?? "";
@@ -451,10 +459,24 @@ export function DailyPractice() {
   );
 
   useEffect(() => {
-    const history = loadPracticeHistory();
-    setSessionHistory(history);
-    setPlan(resolveDailyPlan(practiceDate(), history, "start"));
-    setReady(true);
+    let active = true;
+    const prepare = async () => {
+      const localHistory = loadPracticeHistory();
+      let history = localHistory;
+      try {
+        history = await syncPracticeHistory(localHistory);
+      } catch {
+        // The local history keeps practice available offline.
+      }
+      if (!active) return;
+      setSessionHistory(history);
+      setPlan(resolveDailyPlan(practiceDate(), history, "start"));
+      setReady(true);
+    };
+    void prepare();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -489,6 +511,7 @@ export function DailyPractice() {
         feedback: feedback[question.id],
       };
     });
+    clientSessionIdRef.current ||= globalThis.crypto.randomUUID();
     const savedAt = new Date().toISOString();
     const reflectionMission: ReflectionMissionRecord | undefined =
       reflectionStartedAt
@@ -535,7 +558,7 @@ export function DailyPractice() {
           }
         : undefined;
     const record: DailyPracticeRecord = {
-      id: `${plan.date}-${todayTopic}-${refresh}`,
+      id: `${plan.date}-${todayTopic}-${refresh}-${clientSessionIdRef.current}`,
       date: plan.date,
       completedAt: savedAt,
       topic: todayTopic,
@@ -573,7 +596,7 @@ export function DailyPractice() {
     const nextHistory = [
       record,
       ...savedHistory.filter((item) => item.id !== record.id),
-    ].slice(0, 20);
+    ].slice(0, 200);
     setSessionHistory(nextHistory);
     try {
       window.localStorage.setItem(
@@ -583,6 +606,19 @@ export function DailyPractice() {
     } catch {
       // Local progress is helpful, but the practice should still work without it.
     }
+    const requestId = saveRequestRef.current + 1;
+    saveRequestRef.current = requestId;
+    setSaveStatus("saving");
+    void savePracticeRecordToDatabase(record, nextHistory)
+      .then((mergedHistory) => {
+        if (saveRequestRef.current !== requestId) return;
+        setSessionHistory(mergedHistory);
+        setSaveStatus("saved");
+      })
+      .catch(() => {
+        if (saveRequestRef.current !== requestId) return;
+        setSaveStatus("local-only");
+      });
   }, [
     allQuestions.length,
     allQuestions,
@@ -673,6 +709,7 @@ export function DailyPractice() {
 
   function restart() {
     savedSummaryRef.current = "";
+    clientSessionIdRef.current = "";
     const history = loadPracticeHistory();
     const date = practiceDate();
     setSessionHistory(history);
@@ -694,6 +731,7 @@ export function DailyPractice() {
     setShowHint({});
     setReflectionStartedAt("");
     setReflectionCompletion(undefined);
+    setSaveStatus("idle");
   }
 
   function checkCurrent() {
@@ -1168,6 +1206,27 @@ export function DailyPractice() {
             The short reflection mission is practice evidence, not a mastery
             label. One calm check on another day will tell us more.
           </p>
+          {saveStatus !== "idle" ? (
+            <p
+              aria-live="polite"
+              className={`mt-3 flex items-center gap-2 text-sm font-semibold ${
+                saveStatus === "local-only"
+                  ? "text-[#754714]"
+                  : "text-[#36582e]"
+              }`}
+            >
+              {saveStatus === "saving" ? (
+                <RefreshCw className="size-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="size-4" />
+              )}
+              {saveStatus === "saving"
+                ? "Saving progress..."
+                : saveStatus === "saved"
+                  ? "Progress saved safely"
+                  : "Saved on this device. Online backup will retry next time."}
+            </p>
+          ) : null}
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl bg-white/70 p-4">
               <p className="font-semibold text-[#24495a]">Parent read</p>

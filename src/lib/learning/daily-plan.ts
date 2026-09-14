@@ -289,7 +289,7 @@ export function loadPracticeHistory(): DailyPracticeRecord[] {
           : [],
       }))
       .sort((a, b) => b.completedAt.localeCompare(a.completedAt))
-      .slice(0, 20);
+      .slice(0, 200);
   } catch {
     return [];
   }

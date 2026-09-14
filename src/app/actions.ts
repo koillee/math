@@ -39,6 +39,7 @@ export async function submitDiagnostic(formData: FormData) {
 export async function resetMvpData() {
   const student = await ensureSeedData();
   await prisma.evidenceEvent.deleteMany({ where: { studentId: student.id } });
+  await prisma.simplePracticeSession.deleteMany({ where: { studentId: student.id } });
   await prisma.studentMisconception.deleteMany({ where: { studentId: student.id } });
   await prisma.studentRecommendation.deleteMany({ where: { studentId: student.id } });
   await prisma.parentReport.deleteMany({ where: { studentId: student.id } });
