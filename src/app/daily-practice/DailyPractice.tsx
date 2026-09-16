@@ -43,6 +43,18 @@ import {
   practiceDate,
   resolveDailyPlan,
 } from "@/lib/learning/daily-plan";
+import {
+  REFLECTION_PILOT_ENABLED,
+  REFLECTION_PILOT_LABEL,
+  type ReflectionMissionRecord,
+  addPracticeDays,
+  buildReflectionQuestion,
+  findDueReflectionReview,
+} from "@/lib/learning/reflection-pilot";
+import {
+  type ReflectionCompletion,
+  ReflectionMission,
+} from "./ReflectionMission";
 export {
   buildDailySetFromSeed,
   estimateQuestionDifficulty,
@@ -50,9 +62,15 @@ export {
   isAnswerCorrect,
 } from "@/lib/learning/daily-bank";
 
-type Stage = "goals" | "lesson" | "practice" | "gugudan" | "summary";
+type Stage =
+  | "goals"
+  | "lesson"
+  | "practice"
+  | "reflection"
+  | "gugudan"
+  | "summary";
 
-const stageOrder: Stage[] = ["goals", "lesson", "practice", "gugudan"];
+const stageOrder: Stage[] = ["goals", "lesson", "practice", "reflection"];
 const feedbackChoices: PracticeFeedback[] = [
   "understand",
   "guessed",
@@ -353,6 +371,9 @@ export function DailyPractice() {
   const [stage, setStage] = useState<Stage>("goals");
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [firstWrongAnswers, setFirstWrongAnswers] = useState<
+    Record<string, string>
+  >({});
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [attempts, setAttempts] = useState<Record<string, number>>({});
   const [feedback, setFeedback] = useState<Record<string, PracticeFeedback>>(
@@ -362,6 +383,9 @@ export function DailyPractice() {
   const [sessionHistory, setSessionHistory] = useState<DailyPracticeRecord[]>(
     [],
   );
+  const [reflectionStartedAt, setReflectionStartedAt] = useState("");
+  const [reflectionCompletion, setReflectionCompletion] =
+    useState<ReflectionCompletion>();
   const savedSummaryRef = useRef("");
   const current = questions[index];
   const currentDifficulty = estimateQuestionDifficulty(current);
@@ -400,6 +424,31 @@ export function DailyPractice() {
     sessionHistory
       .flatMap((record) => record.needsReview)
       .find((topic) => topic !== todayTopic);
+  const dueReflectionRecord = findDueReflectionReview(
+    sessionHistory,
+    plan.date,
+  );
+  const reflectionSource = questions.find(
+    (question) => question.label === REFLECTION_PILOT_LABEL,
+  );
+  const reflectionSourceNeedsRepair = Boolean(
+    reflectionSource &&
+      (!isAnswerCorrect(reflectionSource, answers[reflectionSource.id] ?? "") ||
+        (attempts[reflectionSource.id] ?? 0) > 1 ||
+        showHint[reflectionSource.id] ||
+        isConfidenceFlag(feedback[reflectionSource.id])),
+  );
+  const reflectionMode = dueReflectionRecord
+    ? ("delayed-review" as const)
+    : reflectionSourceNeedsRepair
+      ? ("repair" as const)
+      : ("reason" as const);
+  const previousTransferQuestionId =
+    dueReflectionRecord?.reflectionMission?.transfer?.questionId;
+  const reflectionQuestion = buildReflectionQuestion(
+    Number(plan.date.replaceAll("-", "")) + refresh * 43,
+    previousTransferQuestionId,
+  );
 
   useEffect(() => {
     const history = loadPracticeHistory();
@@ -414,6 +463,8 @@ export function DailyPractice() {
       attempts,
       completed,
       feedback,
+      reflectionCompletion,
+      reflectionStartedAt,
       refresh,
       topic: todayTopic,
     });
@@ -438,10 +489,55 @@ export function DailyPractice() {
         feedback: feedback[question.id],
       };
     });
+    const savedAt = new Date().toISOString();
+    const reflectionMission: ReflectionMissionRecord | undefined =
+      reflectionStartedAt
+        ? {
+            version: 1,
+            concept: "equivalent-fractions",
+            kind: reflectionMode,
+            missionDate: plan.date,
+            startedAt: reflectionStartedAt,
+            completed: Boolean(reflectionCompletion),
+            completedAt: reflectionCompletion ? savedAt : undefined,
+            sourceQuestionId:
+              reflectionMode === "delayed-review"
+                ? previousTransferQuestionId
+                : reflectionSource?.id,
+            sourcePrompt:
+              reflectionMode === "delayed-review"
+                ? dueReflectionRecord?.reflectionMission?.transfer?.prompt
+                : reflectionSource?.prompt,
+            sourceAnswer:
+              reflectionMode === "delayed-review"
+                ? dueReflectionRecord?.reflectionMission?.transfer?.answer
+                : reflectionSource?.answer,
+            sourceSelected:
+              reflectionMode === "delayed-review"
+                ? undefined
+                : reflectionSource
+                  ? (firstWrongAnswers[reflectionSource.id] ??
+                    answers[reflectionSource.id] ??
+                    "")
+                  : undefined,
+            thinkingChoice: reflectionCompletion?.thinkingChoice,
+            hintUsed:
+              reflectionMode === "delayed-review"
+                ? false
+                : Boolean(reflectionSource && showHint[reflectionSource.id]),
+            modelInteractionCompleted:
+              reflectionCompletion?.modelInteractionCompleted ?? false,
+            transfer: reflectionCompletion?.transfer,
+            reviewDueDate:
+              reflectionMode === "repair" && reflectionCompletion?.transfer
+                ? addPracticeDays(plan.date, 3)
+                : undefined,
+          }
+        : undefined;
     const record: DailyPracticeRecord = {
       id: `${plan.date}-${todayTopic}-${refresh}`,
       date: plan.date,
-      completedAt: new Date().toISOString(),
+      completedAt: savedAt,
       topic: todayTopic,
       lessonTitle: lesson.title,
       total: allQuestions.length,
@@ -449,10 +545,34 @@ export function DailyPractice() {
       firstTryCorrect: firstTryCorrectCount,
       needsReview,
       items,
+      reflectionMission,
     };
+    let savedHistory = loadPracticeHistory();
+    if (
+      dueReflectionRecord &&
+      reflectionCompletion?.transfer &&
+      reflectionMode === "delayed-review"
+    ) {
+      const delayedReview = {
+        ...reflectionCompletion.transfer,
+        completedAt: savedAt,
+      };
+      savedHistory = savedHistory.map((historyRecord) =>
+        historyRecord.id === dueReflectionRecord.id &&
+        historyRecord.reflectionMission
+          ? {
+              ...historyRecord,
+              reflectionMission: {
+                ...historyRecord.reflectionMission,
+                delayedReview,
+              },
+            }
+          : historyRecord,
+      );
+    }
     const nextHistory = [
       record,
-      ...loadPracticeHistory().filter((item) => item.id !== record.id),
+      ...savedHistory.filter((item) => item.id !== record.id),
     ].slice(0, 20);
     setSessionHistory(nextHistory);
     try {
@@ -470,14 +590,22 @@ export function DailyPractice() {
     attempts,
     completed,
     correctCount,
+    dueReflectionRecord,
     feedback,
+    firstWrongAnswers,
     firstTryCorrectCount,
     lesson.title,
     needsReview,
     refresh,
+    reflectionCompletion,
+    reflectionMode,
+    reflectionSource,
+    reflectionStartedAt,
     stage,
+    showHint,
     todayTopic,
     plan.date,
+    previousTransferQuestionId,
   ]);
 
   function selectAnswer(answer: string) {
@@ -498,7 +626,24 @@ export function DailyPractice() {
       setIndex((value) => value + 1);
       return;
     }
-    setStage("gugudan");
+    const unfinishedIndex = questions.findIndex(
+      (question) => !checked[question.id],
+    );
+    if (unfinishedIndex >= 0) {
+      setIndex(unfinishedIndex);
+      return;
+    }
+    startReflection();
+  }
+
+  function startReflection() {
+    if (!completed) return;
+    if (!REFLECTION_PILOT_ENABLED) {
+      setStage("gugudan");
+      return;
+    }
+    setReflectionStartedAt((value) => value || new Date().toISOString());
+    setStage("reflection");
   }
 
   function back() {
@@ -507,6 +652,11 @@ export function DailyPractice() {
       return;
     }
     if (stage === "gugudan") {
+      setStage("practice");
+      setIndex(questions.length - 1);
+      return;
+    }
+    if (stage === "reflection") {
       setStage("practice");
       setIndex(questions.length - 1);
       return;
@@ -537,10 +687,13 @@ export function DailyPractice() {
     setStage("goals");
     setIndex(0);
     setAnswers({});
+    setFirstWrongAnswers({});
     setChecked({});
     setAttempts({});
     setFeedback({});
     setShowHint({});
+    setReflectionStartedAt("");
+    setReflectionCompletion(undefined);
   }
 
   function checkCurrent() {
@@ -551,6 +704,10 @@ export function DailyPractice() {
     }));
     setChecked((all) => ({ ...all, [current.id]: true }));
     if (!isAnswerCorrect(current, selected)) {
+      setFirstWrongAnswers((all) => ({
+        ...all,
+        [current.id]: all[current.id] ?? selected,
+      }));
       setShowHint((all) => ({ ...all, [current.id]: true }));
     }
   }
@@ -590,7 +747,9 @@ export function DailyPractice() {
         </div>
         <p className="mt-4 max-w-2xl text-lg leading-7 text-[#d8cdbb]">
           Today starts with {topicLabels[todayTopic].toLowerCase()}, then gives
-          six practice questions and one 구구단 fluency finish.
+          {REFLECTION_PILOT_ENABLED
+            ? " six practice questions, one short fix-it mission, and a 구구단 finish."
+            : " six practice questions and a 구구단 finish."}
         </p>
       </section>
 
@@ -621,17 +780,23 @@ export function DailyPractice() {
               </p>
             </div>
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            {["Learn the idea", "Try six questions", "Finish with 구구단"].map(
-              (item, position) => (
-                <div key={item} className="rounded-2xl bg-[#f7fbf7] p-4">
-                  <p className="text-2xl font-semibold text-[#2f6173]">
-                    {position + 1}
-                  </p>
-                  <p className="mt-1 font-semibold">{item}</p>
-                </div>
-              ),
-            )}
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {(REFLECTION_PILOT_ENABLED
+              ? [
+                  "Learn the idea",
+                  "Try six questions",
+                  "Fix one idea",
+                  "Finish with 구구단",
+                ]
+              : ["Learn the idea", "Try six questions", "Finish with 구구단"]
+            ).map((item, position) => (
+              <div key={item} className="rounded-2xl bg-[#f7fbf7] p-4">
+                <p className="text-2xl font-semibold text-[#2f6173]">
+                  {position + 1}
+                </p>
+                <p className="mt-1 font-semibold">{item}</p>
+              </div>
+            ))}
           </div>
           <button
             onClick={() => setStage("lesson")}
@@ -741,20 +906,27 @@ export function DailyPractice() {
               );
             })}
             <button
-              onClick={() => setStage("gugudan")}
+              onClick={stage === "gugudan" ? undefined : startReflection}
+              disabled={stage !== "gugudan" && !completed}
               className={`w-full rounded-2xl border p-4 text-left transition ${
                 stage === "gugudan"
                   ? "border-[#10211f] bg-[#10211f] text-[#f8efe1]"
-                  : "border-[#dfd3c0] bg-white/75 text-[#17211f] hover:border-[#2f6173]"
+                  : "border-[#dfd3c0] bg-white/75 text-[#17211f] hover:border-[#2f6173] disabled:cursor-not-allowed disabled:opacity-45"
               }`}
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="font-semibold">Final step</p>
+                <p className="font-semibold">
+                  {stage === "gugudan" || !REFLECTION_PILOT_ENABLED
+                    ? "Final step"
+                    : "After the questions"}
+                </p>
               </div>
               <p
                 className={`mt-1 text-sm ${stage === "gugudan" ? "text-[#d8cdbb]" : "text-[#53615c]"}`}
               >
-                구구단 finish
+                {stage === "gugudan" || !REFLECTION_PILOT_ENABLED
+                  ? "구구단 finish"
+                  : "Fix one idea"}
               </p>
             </button>
           </aside>
@@ -876,10 +1048,20 @@ export function DailyPractice() {
                     onClick={next}
                     className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1]"
                   >
-                    Go to 구구단
+                    Go to an unfinished question
                     <ArrowRight className="size-4" />
                   </button>
-                ) : null}
+                ) : (
+                  <button
+                    onClick={startReflection}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1]"
+                  >
+                    {REFLECTION_PILOT_ENABLED
+                      ? "Fix one idea together"
+                      : "Go to 구구단"}
+                    <ArrowRight className="size-4" />
+                  </button>
+                )}
               </div>
 
               {showHint[current.id] ? (
@@ -945,7 +1127,32 @@ export function DailyPractice() {
         </section>
       ) : null}
 
-      {stage === "summary" || completed ? (
+      {stage === "reflection" && REFLECTION_PILOT_ENABLED ? (
+        <ReflectionMission
+          key={`${plan.date}-${refresh}-${reflectionMode}`}
+          mode={reflectionMode}
+          source={
+            reflectionMode === "delayed-review" || !reflectionSource
+              ? undefined
+              : {
+                  id: reflectionSource.id,
+                  prompt: reflectionSource.prompt,
+                  answer: reflectionSource.answer,
+                  selected:
+                    firstWrongAnswers[reflectionSource.id] ??
+                    answers[reflectionSource.id] ??
+                    "",
+                }
+          }
+          transferQuestion={reflectionQuestion}
+          onComplete={(completion) => {
+            setReflectionCompletion(completion);
+            setStage("gugudan");
+          }}
+        />
+      ) : null}
+
+      {stage === "summary" ? (
         <section className="rounded-[1.5rem] border border-[#cfded7] bg-[#f7fbf7] p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#94652e]">
             Finished
@@ -958,8 +1165,8 @@ export function DailyPractice() {
             {allQuestions.length}
           </p>
           <p className="mt-3 leading-6 text-[#53615c]">
-            The most useful next step is to explain one tricky question aloud,
-            then stop while the session still feels light.
+            The short reflection mission is practice evidence, not a mastery
+            label. One calm check on another day will tell us more.
           </p>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl bg-white/70 p-4">

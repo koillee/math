@@ -21,6 +21,10 @@ import {
   skillDefinitions,
   skillIdForLabel,
 } from "./practice-progress";
+import {
+  REFLECTION_PILOT_ENABLED,
+  REFLECTION_PILOT_LABEL,
+} from "./reflection-pilot";
 
 const PLAN_VERSION = 1;
 export const DAILY_PLAN_KEY = "haim-daily-plans-v1";
@@ -179,6 +183,22 @@ export function buildDailyPlan(
     ),
     6,
   );
+
+  if (
+    REFLECTION_PILOT_ENABLED &&
+    !chosen.some((template) => template.label === REFLECTION_PILOT_LABEL)
+  ) {
+    const pilotTemplate = templates.find(
+      (template) => template.label === REFLECTION_PILOT_LABEL,
+    );
+    const mixedReviewIndex = chosen.findLastIndex(
+      (template, index) => index >= 3 && template.topic !== todayTopic,
+    );
+    if (pilotTemplate) {
+      chosen[mixedReviewIndex >= 0 ? mixedReviewIndex : chosen.length - 1] =
+        pilotTemplate;
+    }
+  }
 
   const pastPrompts = new Set(
     history.flatMap((record) => record.items.map((item) => item.prompt)),

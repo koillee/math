@@ -26,6 +26,10 @@ import {
   topicLabels,
 } from "@/lib/learning/practice-progress";
 import {
+  REFLECTION_PILOT_ENABLED,
+  summarizeReflectionPilot,
+} from "@/lib/learning/reflection-pilot";
+import {
   ArrowRight,
   BookOpenCheck,
   CalendarClock,
@@ -297,6 +301,10 @@ export function ParentSummaryClient() {
       record.items.filter((item) => isConfidenceFlag(item.feedback)).length,
     0,
   );
+  const reflectionSummary = useMemo(
+    () => summarizeReflectionPilot(records, practiceDate()),
+    [records],
+  );
   const reviewItems = records
     .flatMap((record) =>
       record.items
@@ -410,6 +418,72 @@ export function ParentSummaryClient() {
               </button>
             </div>
           </Card>
+
+          {REFLECTION_PILOT_ENABLED ? (
+            <Card className="border-[#cfded7] bg-[#f7fbf7]">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#2f6173]">
+                    {t("Two-week reflection pilot", "2주 생각 고치기 파일럿")}
+                  </p>
+                  <h3 className="mt-1 text-2xl font-semibold">
+                    {t("Equivalent fractions", "동치분수")}
+                  </h3>
+                </div>
+                <Pill tone={reflectionSummary.enoughData ? "green" : "amber"}>
+                  {reflectionSummary.completed}/{reflectionSummary.participated}{" "}
+                  {t("completed", "완료")}
+                </Pill>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl bg-white p-4">
+                  <p className="text-2xl font-semibold text-[#24495a]">
+                    {reflectionSummary.independentTransfers}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-[#53615c]">
+                    {t(
+                      "Changed problems solved without a hint",
+                      "힌트 없이 바꾼 문제를 해결한 횟수",
+                    )}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white p-4">
+                  <p className="text-2xl font-semibold text-[#754714]">
+                    {reflectionSummary.guidedFinishes}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-[#53615c]">
+                    {t(
+                      "Problems finished together with the app",
+                      "앱과 함께 끝까지 풀어본 횟수",
+                    )}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white p-4">
+                  <p className="text-2xl font-semibold text-[#36582e]">
+                    {reflectionSummary.delayedSuccesses}/
+                    {reflectionSummary.delayedChecks}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-[#53615c]">
+                    {t(
+                      "Three-day checks solved without a hint",
+                      "3일 뒤 확인 문제를 힌트 없이 해결한 횟수",
+                    )}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-[#53615c]">
+                {reflectionSummary.enoughData
+                  ? t(
+                      "This is useful early evidence about independent use and later recall. It still does not label the concept as mastered.",
+                      "혼자 적용한 결과와 며칠 뒤 기억을 살펴볼 수 있는 초기 자료예요. 이 결과만으로 개념을 숙달했다고 판단하지는 않습니다.",
+                    )
+                  : t(
+                      "There is not enough evidence yet. Wait for at least four completed missions and one three-day check before looking for a pattern.",
+                      "아직 자료가 충분하지 않아요. 완료한 미션 4회와 3일 뒤 확인 1회 이상이 쌓인 뒤 경향을 살펴보세요.",
+                    )}
+              </p>
+            </Card>
+          ) : null}
 
           <section className="grid items-start gap-5 lg:grid-cols-[1.05fr_0.95fr]">
             <Card className="bg-[#10211f] text-[#f8efe1]">

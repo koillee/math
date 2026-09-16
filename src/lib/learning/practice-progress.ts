@@ -56,6 +56,7 @@ export type DailyPracticeRecord = {
   firstTryCorrect: number;
   needsReview: PracticeTopic[];
   items: PracticeItemRecord[];
+  reflectionMission?: import("./reflection-pilot").ReflectionMissionRecord;
 };
 
 export type TopicSummary = {
