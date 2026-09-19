@@ -109,6 +109,16 @@ bunx prisma db push
 
 After the schema exists, the app seeds Haim, the skill graph, misconceptions, and item bank automatically on first use.
 
+For an existing deployment, apply committed additive migrations before deploying
+application code that uses the new tables:
+
+```bash
+npm run db:deploy
+```
+
+The Daily Practice history migration only adds new session and attempt tables;
+it does not reset or delete existing learning data.
+
 ## Local development
 
 Install dependencies:

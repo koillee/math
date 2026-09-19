@@ -307,3 +307,28 @@ export function mergePracticeHistories(
     .sort((a, b) => b.completedAt.localeCompare(a.completedAt))
     .slice(0, maximum);
 }
+
+export function practiceRecordsNeedingUpload(
+  localRecords: DailyPracticeRecord[],
+  databaseRecords: DailyPracticeRecord[],
+  maximum = 50,
+) {
+  const databaseById = new Map(
+    normalizePracticeRecords(databaseRecords).map((record) => [
+      record.id,
+      record,
+    ]),
+  );
+  return normalizePracticeRecords(localRecords)
+    .filter((localRecord) => {
+      const databaseRecord = databaseById.get(localRecord.id);
+      if (!databaseRecord) return true;
+      const mergedRecord = mergePracticeHistories(
+        [localRecord],
+        [databaseRecord],
+        1,
+      )[0];
+      return JSON.stringify(mergedRecord) !== JSON.stringify(databaseRecord);
+    })
+    .slice(0, maximum);
+}

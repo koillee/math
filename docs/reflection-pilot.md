@@ -21,7 +21,7 @@ The pilot does not use a free-form AI tutor, video, speed competition, hint pena
 
 ## What is recorded
 
-The optional `reflectionMission` field is stored inside the existing browser-based Daily Practice record. No database migration is required.
+The optional `reflectionMission` field is stored inside the Daily Practice record and synchronized to the authenticated production database. Browser storage remains an offline fallback and is migrated automatically when a device first connects.
 
 - Mission started and completed
 - Whether the original Daily Practice hint was opened
@@ -46,4 +46,4 @@ At the end of two weeks, keep or expand the pattern only if it is short enough, 
 
 The feature is controlled by `REFLECTION_PILOT_ENABLED` in `src/lib/learning/reflection-pilot.ts`. Setting it to `false` removes the guaranteed pilot question from future plans. The UI integration is contained in the Daily Practice reflection stage and the Parent Report pilot card. Existing Daily Practice records remain readable because the new field is optional.
 
-The current storage is browser-local. Results appear in Parent Report only in the same browser profile and can be lost if site data is cleared. Cross-device persistence should be evaluated separately before any broader rollout.
+Daily Practice and Parent Report merge the signed-in student's database history with any unsynced records on the current device. Clearing one browser's site data does not remove records already synchronized to the database. The production schema migration must be applied before this version is deployed; until then, the app safely falls back to device storage.

@@ -3,6 +3,7 @@ import {
   mergePracticeHistories,
   normalizePracticeRecord,
   normalizePracticeRecords,
+  practiceRecordsNeedingUpload,
 } from "../src/lib/learning/practice-history";
 
 const sample = {
@@ -93,6 +94,7 @@ assert.equal(merged.length, 1);
 assert.equal(merged[0].lessonTitle, "Database copy");
 assert.equal(merged[0].completedAt, "2026-09-14T09:00:00.000Z");
 assert.equal(merged[0].reflectionMission?.completed, true);
+assert.equal(practiceRecordsNeedingUpload([normalized], [normalized]).length, 0);
 
 const newerWithoutReflection = {
   ...normalized,
@@ -103,6 +105,10 @@ const newerWithoutReflection = {
 const preserved = mergePracticeHistories([normalized], [newerWithoutReflection]);
 assert.equal(preserved[0].lessonTitle, "Newer core fields");
 assert.equal(preserved[0].reflectionMission?.thinkingChoice, "changed-one-part");
+assert.equal(
+  practiceRecordsNeedingUpload([normalized], [newerWithoutReflection]).length,
+  1,
+);
 
 const withDelayedReview = {
   ...normalized,
@@ -122,6 +128,10 @@ const delayedPreserved = mergePracticeHistories(
 assert.equal(
   delayedPreserved[0].reflectionMission?.delayedReview?.questionId,
   "pilot-equivalent-3-4-x2",
+);
+assert.equal(
+  practiceRecordsNeedingUpload([normalized], [withDelayedReview]).length,
+  0,
 );
 
 const invalidReflection = normalizePracticeRecord({

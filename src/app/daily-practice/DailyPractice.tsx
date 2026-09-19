@@ -571,6 +571,7 @@ export function DailyPractice() {
       reflectionMission,
     };
     let savedHistory = loadPracticeHistory();
+    let delayedReviewRecord: DailyPracticeRecord | undefined;
     if (
       dueReflectionRecord &&
       reflectionCompletion?.transfer &&
@@ -580,18 +581,22 @@ export function DailyPractice() {
         ...reflectionCompletion.transfer,
         completedAt: savedAt,
       };
-      savedHistory = savedHistory.map((historyRecord) =>
-        historyRecord.id === dueReflectionRecord.id &&
-        historyRecord.reflectionMission
-          ? {
-              ...historyRecord,
-              reflectionMission: {
-                ...historyRecord.reflectionMission,
-                delayedReview,
-              },
-            }
-          : historyRecord,
-      );
+      savedHistory = savedHistory.map((historyRecord) => {
+        if (
+          historyRecord.id === dueReflectionRecord.id &&
+          historyRecord.reflectionMission
+        ) {
+          delayedReviewRecord = {
+            ...historyRecord,
+            reflectionMission: {
+              ...historyRecord.reflectionMission,
+              delayedReview,
+            },
+          };
+          return delayedReviewRecord;
+        }
+        return historyRecord;
+      });
     }
     const nextHistory = [
       record,
@@ -609,7 +614,11 @@ export function DailyPractice() {
     const requestId = saveRequestRef.current + 1;
     saveRequestRef.current = requestId;
     setSaveStatus("saving");
-    void savePracticeRecordToDatabase(record, nextHistory)
+    void savePracticeRecordToDatabase(
+      record,
+      nextHistory,
+      delayedReviewRecord ? [delayedReviewRecord] : [],
+    )
       .then((mergedHistory) => {
         if (saveRequestRef.current !== requestId) return;
         setSessionHistory(mergedHistory);

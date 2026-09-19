@@ -7,6 +7,7 @@
     "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
     "build": "prisma generate && BUILD_DIR=.next-build next build",
     "build:local": "BUILD_DIR=.next-build next build",
+    "db:deploy": "prisma migrate deploy",
     "lint": "biome lint . && tsc --noEmit --incremental false",
     "test:item-bank": "tsx scripts/validate-item-bank.ts",
     "test:practice-quality": "tsx scripts/validate-practice-quality.ts",

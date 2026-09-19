@@ -3,6 +3,7 @@
 import {
   mergePracticeHistories,
   normalizePracticeRecords,
+  practiceRecordsNeedingUpload,
 } from "./practice-history";
 import {
   DAILY_PROGRESS_KEY,
@@ -24,7 +25,7 @@ async function requestHistory(
   records?: DailyPracticeRecord[],
 ) {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 3_500);
+  const timeout = window.setTimeout(() => controller.abort(), 8_000);
   try {
     const response = await fetch("/api/daily-practice/history", {
       method,
@@ -48,10 +49,14 @@ async function requestHistory(
 }
 
 export async function syncPracticeHistory(localRecords: DailyPracticeRecord[]) {
-  const databaseRecords = await requestHistory(
-    localRecords.length ? "POST" : "GET",
+  let databaseRecords = await requestHistory("GET");
+  const recordsToUpload = practiceRecordsNeedingUpload(
     localRecords,
+    databaseRecords,
   );
+  if (recordsToUpload.length) {
+    databaseRecords = await requestHistory("POST", recordsToUpload);
+  }
   const merged = mergePracticeHistories(localRecords, databaseRecords);
   saveLocalHistory(merged);
   return merged;
@@ -60,11 +65,12 @@ export async function syncPracticeHistory(localRecords: DailyPracticeRecord[]) {
 export async function savePracticeRecordToDatabase(
   record: DailyPracticeRecord,
   localRecords: DailyPracticeRecord[],
+  relatedUpdates: DailyPracticeRecord[] = [],
 ) {
-  const recordsToSave = [
-    record,
-    ...localRecords.filter((candidate) => candidate.id !== record.id),
-  ];
+  const recordsToSave = [record, ...relatedUpdates].filter(
+    (candidate, index, records) =>
+      records.findIndex((item) => item.id === candidate.id) === index,
+  );
   const databaseRecords = await requestHistory("POST", recordsToSave);
   const merged = mergePracticeHistories(localRecords, databaseRecords);
   saveLocalHistory(merged);
