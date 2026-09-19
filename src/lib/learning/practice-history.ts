@@ -313,7 +313,7 @@ export function mergePracticeHistories(
 export function practiceRecordsNeedingUpload(
   localRecords: DailyPracticeRecord[],
   databaseRecords: DailyPracticeRecord[],
-  maximum = 50,
+  maximum = 200,
 ) {
   const databaseById = new Map(
     normalizePracticeRecords(databaseRecords).map((record) => [

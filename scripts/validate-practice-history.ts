@@ -100,6 +100,16 @@ assert.equal(merged[0].lessonTitle, "Database copy");
 assert.equal(merged[0].completedAt, "2026-09-14T09:00:00.000Z");
 assert.equal(merged[0].reflectionMission?.completed, true);
 assert.equal(practiceRecordsNeedingUpload([normalized], [normalized]).length, 0);
+assert.equal(
+  practiceRecordsNeedingUpload(
+    Array.from({ length: 75 }, (_, index) => ({
+      ...normalized,
+      id: `history-${index}`,
+    })),
+    [],
+  ).length,
+  75,
+);
 
 const newerWithoutReflection = {
   ...normalized,
