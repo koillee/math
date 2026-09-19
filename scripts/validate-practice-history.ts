@@ -39,6 +39,8 @@ const sample = {
       prompt: "What is 3/4 of 20?",
       answer: "15",
       selected: "10",
+      firstWrongAnswer: "5",
+      hintUsed: true,
       correct: false,
       attempts: 2,
       difficulty: "Core",
@@ -75,6 +77,9 @@ assert.ok(normalized);
 assert.equal(normalized.total, 2);
 assert.equal(normalized.correct, 1);
 assert.equal(normalized.firstTryCorrect, 1);
+assert.equal(normalized.items[1].firstWrongAnswer, "5");
+assert.equal(normalized.items[1].hintUsed, true);
+assert.equal(normalized.items[0].hintUsed, undefined);
 assert.deepEqual(normalized.needsReview, ["fractions"]);
 assert.equal(normalized.reflectionMission?.completed, true);
 assert.equal(normalized.reflectionMission?.transfer?.correct, true);

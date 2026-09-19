@@ -238,6 +238,8 @@ model SimplePracticeAttempt {
   prompt         String
   expectedAnswer String
   selectedAnswer String
+  firstWrongAnswer String?
+  hintUsed       Boolean?
   correct        Boolean
   attempts       Int
   difficulty     String?

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { getActiveDiagnosticItems } from "@/lib/learning/assessment";
 import { processDiagnosticSubmission } from "@/lib/learning/process";
 import { ensureSeedData } from "@/lib/learning/seed";
+import { isMvpResetAllowed } from "@/lib/server/production-safety";
 
 function confidenceNumber(value: FormDataEntryValue | null) {
   const n = Number(value ?? 3);
@@ -37,6 +38,7 @@ export async function submitDiagnostic(formData: FormData) {
 }
 
 export async function resetMvpData() {
+  if (!isMvpResetAllowed()) throw new Error("Reset is disabled.");
   const student = await ensureSeedData();
   await prisma.evidenceEvent.deleteMany({ where: { studentId: student.id } });
   await prisma.simplePracticeSession.deleteMany({ where: { studentId: student.id } });

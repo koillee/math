@@ -116,8 +116,12 @@ application code that uses the new tables:
 npm run db:deploy
 ```
 
-The Daily Practice history migration only adds new session and attempt tables;
-it does not reset or delete existing learning data.
+This command applies the SQL once, in a transaction, to the existing database.
+The existing app was provisioned with db push and has no migration baseline;
+do not run migrate deploy on it. First check that neither SimplePractice table
+already exists. This SQL only adds the two new tables and does not reset or
+delete existing learning data. For a fresh database, use the full schema setup
+above instead.
 
 ## Local development
 

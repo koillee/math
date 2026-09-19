@@ -12,6 +12,17 @@ import {
 
 type HistoryResponse = { records?: unknown };
 
+function mergeCurrentLocalHistory(records: DailyPracticeRecord[]) {
+  try {
+    const current = normalizePracticeRecords(
+      JSON.parse(window.localStorage.getItem(DAILY_PROGRESS_KEY) ?? "[]"),
+    );
+    return mergePracticeHistories(records, current);
+  } catch {
+    return records;
+  }
+}
+
 function saveLocalHistory(records: DailyPracticeRecord[]) {
   try {
     window.localStorage.setItem(DAILY_PROGRESS_KEY, JSON.stringify(records));
@@ -54,10 +65,15 @@ export async function syncPracticeHistory(localRecords: DailyPracticeRecord[]) {
     localRecords,
     databaseRecords,
   );
-  if (recordsToUpload.length) {
-    databaseRecords = await requestHistory("POST", recordsToUpload);
+  for (let offset = 0; offset < recordsToUpload.length; offset += 20) {
+    databaseRecords = await requestHistory(
+      "POST",
+      recordsToUpload.slice(offset, offset + 20),
+    );
   }
-  const merged = mergePracticeHistories(localRecords, databaseRecords);
+  const merged = mergeCurrentLocalHistory(
+    mergePracticeHistories(localRecords, databaseRecords),
+  );
   saveLocalHistory(merged);
   return merged;
 }
@@ -72,7 +88,9 @@ export async function savePracticeRecordToDatabase(
       records.findIndex((item) => item.id === candidate.id) === index,
   );
   const databaseRecords = await requestHistory("POST", recordsToSave);
-  const merged = mergePracticeHistories(localRecords, databaseRecords);
+  const merged = mergeCurrentLocalHistory(
+    mergePracticeHistories(localRecords, databaseRecords),
+  );
   saveLocalHistory(merged);
   return merged;
 }

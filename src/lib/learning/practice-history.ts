@@ -203,8 +203,10 @@ function normalizeItem(
     prompt,
     answer,
     selected: boundedString(item.selected, 300),
+    firstWrongAnswer: boundedString(item.firstWrongAnswer, 300) || undefined,
+    hintUsed: typeof item.hintUsed === "boolean" ? item.hintUsed : undefined,
     correct: item.correct === true,
-    attempts: Math.max(0, Math.min(20, Number(item.attempts) || 0)),
+    attempts: Math.max(0, Math.min(20, Math.floor(Number(item.attempts) || 0))),
     difficulty,
     feedback,
   };

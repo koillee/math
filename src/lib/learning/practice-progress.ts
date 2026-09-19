@@ -39,6 +39,8 @@ export type PracticeItemRecord = {
   prompt: string;
   answer: string;
   selected: string;
+  firstWrongAnswer?: string;
+  hintUsed?: boolean;
   correct: boolean;
   attempts: number;
   difficulty?: "Warm-up" | "Core" | "Stretch";

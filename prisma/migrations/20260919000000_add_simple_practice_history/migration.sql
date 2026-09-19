@@ -1,4 +1,5 @@
 -- Additive storage for the simplified Daily Practice and reflection pilot.
+BEGIN;
 CREATE TABLE "SimplePracticeSession" (
     "id" TEXT NOT NULL,
     "studentId" TEXT NOT NULL,
@@ -29,6 +30,8 @@ CREATE TABLE "SimplePracticeAttempt" (
     "prompt" TEXT NOT NULL,
     "expectedAnswer" TEXT NOT NULL,
     "selectedAnswer" TEXT NOT NULL,
+    "firstWrongAnswer" TEXT,
+    "hintUsed" BOOLEAN,
     "correct" BOOLEAN NOT NULL,
     "attempts" INTEGER NOT NULL,
     "difficulty" TEXT,
@@ -62,3 +65,4 @@ ALTER TABLE "SimplePracticeAttempt"
     ADD CONSTRAINT "SimplePracticeAttempt_sessionId_fkey"
     FOREIGN KEY ("sessionId") REFERENCES "SimplePracticeSession"("id")
     ON DELETE CASCADE ON UPDATE CASCADE;
+COMMIT;

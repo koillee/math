@@ -389,6 +389,9 @@ export function DailyPractice() {
     [],
   );
   const [reflectionStartedAt, setReflectionStartedAt] = useState("");
+  const [reflectionHistory, setReflectionHistory] = useState<
+    DailyPracticeRecord[]
+  >([]);
   const [reflectionCompletion, setReflectionCompletion] =
     useState<ReflectionCompletion>();
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -433,7 +436,7 @@ export function DailyPractice() {
       .flatMap((record) => record.needsReview)
       .find((topic) => topic !== todayTopic);
   const dueReflectionRecord = findDueReflectionReview(
-    sessionHistory,
+    reflectionHistory,
     plan.date,
   );
   const reflectionSource = questions.find(
@@ -487,6 +490,7 @@ export function DailyPractice() {
       feedback,
       reflectionCompletion,
       reflectionStartedAt,
+      showHint,
       refresh,
       topic: todayTopic,
     });
@@ -505,6 +509,8 @@ export function DailyPractice() {
         prompt: question.prompt,
         answer: question.answer,
         selected: selectedAnswer,
+        firstWrongAnswer: firstWrongAnswers[question.id],
+        hintUsed: Boolean(showHint[question.id]),
         correct: isAnswerCorrect(question, selectedAnswer),
         attempts: attempts[question.id] ?? 0,
         difficulty: estimateQuestionDifficulty(question),
@@ -683,10 +689,15 @@ export function DailyPractice() {
 
   function startReflection() {
     if (!completed) return;
+    if (reflectionCompletion) {
+      setStage("gugudan");
+      return;
+    }
     if (!REFLECTION_PILOT_ENABLED) {
       setStage("gugudan");
       return;
     }
+    if (!reflectionStartedAt) setReflectionHistory(sessionHistory);
     setReflectionStartedAt((value) => value || new Date().toISOString());
     setStage("reflection");
   }
@@ -717,6 +728,7 @@ export function DailyPractice() {
   }
 
   function restart() {
+    saveRequestRef.current += 1;
     savedSummaryRef.current = "";
     clientSessionIdRef.current = "";
     const history = loadPracticeHistory();
@@ -739,6 +751,7 @@ export function DailyPractice() {
     setFeedback({});
     setShowHint({});
     setReflectionStartedAt("");
+    setReflectionHistory([]);
     setReflectionCompletion(undefined);
     setSaveStatus("idle");
   }

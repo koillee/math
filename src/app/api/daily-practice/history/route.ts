@@ -6,10 +6,18 @@ import {
 } from "@/lib/learning/practice-history";
 import type { DailyPracticeRecord } from "@/lib/learning/practice-progress";
 import { ensureSeedData } from "@/lib/learning/seed";
-import type { Prisma } from "@prisma/client";
+import { MVP_STUDENT } from "@/lib/learning/data";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 const responseHeaders = { "Cache-Control": "private, no-store" };
+
+async function getStudent() {
+  return (
+    (await prisma.student.findFirst({ where: { name: MVP_STUDENT.name } })) ??
+    ensureSeedData()
+  );
+}
 
 type StoredSession = Prisma.SimplePracticeSessionGetPayload<{
   include: { items: true };
@@ -39,6 +47,8 @@ function serializeSession(session: StoredSession): DailyPracticeRecord {
         prompt: item.prompt,
         answer: item.expectedAnswer,
         selected: item.selectedAnswer,
+        firstWrongAnswer: item.firstWrongAnswer ?? undefined,
+        hintUsed: item.hintUsed ?? undefined,
         correct: item.correct,
         attempts: item.attempts,
         difficulty:
@@ -64,6 +74,8 @@ function createAttempts(record: DailyPracticeRecord) {
     prompt: item.prompt,
     expectedAnswer: item.answer,
     selectedAnswer: item.selected,
+    firstWrongAnswer: item.firstWrongAnswer,
+    hintUsed: item.hintUsed,
     correct: item.correct,
     attempts: item.attempts,
     difficulty: item.difficulty,
@@ -150,7 +162,7 @@ async function loadHistory(studentId: string) {
 
 export async function GET() {
   try {
-    const student = await ensureSeedData();
+    const student = await getStudent();
     return NextResponse.json(
       { records: await loadHistory(student.id) },
       { headers: responseHeaders },
@@ -172,7 +184,19 @@ export async function POST(request: Request) {
         { status: 415, headers: responseHeaders },
       );
     }
-    const body = (await request.json()) as { records?: unknown };
+    const raw = await request.text();
+    if (raw.length > 1_000_000)
+      return NextResponse.json(
+        { error: "Request too large." },
+        { status: 413 },
+      );
+    let body: { records?: unknown };
+    try {
+      body = JSON.parse(raw);
+      if (!body || typeof body !== "object") throw new Error("Invalid body");
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    }
     const records = normalizePracticeRecords(body.records, 50);
     if (!records.length) {
       return NextResponse.json(
@@ -181,12 +205,29 @@ export async function POST(request: Request) {
       );
     }
 
-    const student = await ensureSeedData();
-    await prisma.$transaction(async (transaction) => {
-      for (const record of records) {
-        await saveRecord(transaction, student.id, record);
+    const student = await getStudent();
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        await prisma.$transaction(
+          async (transaction) => {
+            for (const record of records)
+              await saveRecord(transaction, student.id, record);
+          },
+          {
+            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+            timeout: 15_000,
+          },
+        );
+        break;
+      } catch (error) {
+        if (
+          attempt >= 2 ||
+          !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+          !["P2034", "P2002"].includes(error.code)
+        )
+          throw error;
       }
-    });
+    }
 
     return NextResponse.json(
       { records: await loadHistory(student.id) },
