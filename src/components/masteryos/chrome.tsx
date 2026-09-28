@@ -15,6 +15,7 @@ import {
   NotebookTabs,
   RefreshCw,
   Route,
+  Trophy,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -25,6 +26,7 @@ const nav = [
   ["/gugudan", "구구단", Calculator],
   ["/math-map", "Math Map", MapIcon],
   ["/lessons", "Lessons", NotebookTabs],
+  ["/olympiad", "Olympiad", Trophy],
   ["/diagnostic", "Diagnostic", ClipboardCheck],
   ["/next", "Next Action", Route],
   ["/retention", "Retention", RefreshCw],
@@ -43,6 +45,7 @@ const simpleNav = [
   ["/math-map", "Math Map"],
   ["/lessons", "Lessons"],
   ["/parent-report", "Parent Report"],
+  ["/olympiad", "Olympiad"],
 ] as const;
 
 export function AppShell({

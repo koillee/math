@@ -5,6 +5,7 @@ import {
   CalendarDays,
   MapIcon,
   NotebookTabs,
+  Trophy,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -128,6 +129,27 @@ export default function HaimHome() {
               className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#10211f] px-5 py-3 font-semibold text-[#f8efe1]"
             >
               Start learning
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        </section>
+        <section className="mt-4 rounded-[1.5rem] border border-[#d5bf96] bg-[#fffaf0] p-6 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <Trophy className="mt-1 size-6 text-[#94652e]" />
+              <div>
+                <h2 className="text-xl font-semibold">Olympiad</h2>
+                <p className="mt-2 leading-6 text-[#53615c]">
+                  Explore patterns, logic, geometry, counting, and rich
+                  problems with hints available one step at a time.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/olympiad"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#94652e] px-5 py-3 font-semibold text-white"
+            >
+              Open challenges
               <ArrowRight className="size-4" />
             </Link>
           </div>
