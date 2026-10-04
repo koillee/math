@@ -44,6 +44,10 @@ import {
   resolveDailyPlan,
 } from "@/lib/learning/daily-plan";
 import {
+  savePracticeRecordToDatabase,
+  syncPracticeHistory,
+} from "@/lib/learning/practice-history-client";
+import {
   REFLECTION_PILOT_ENABLED,
   REFLECTION_PILOT_LABEL,
   type ReflectionMissionRecord,
@@ -52,16 +56,13 @@ import {
   findDueReflectionReview,
 } from "@/lib/learning/reflection-pilot";
 import {
-  savePracticeRecordToDatabase,
-  syncPracticeHistory,
-} from "@/lib/learning/practice-history-client";
-import {
   type ReflectionCompletion,
   ReflectionMission,
 } from "./ReflectionMission";
 export {
   buildDailySetFromSeed,
   estimateQuestionDifficulty,
+  hintRevealsAnswer,
   inferredPracticeLabels,
   isAnswerCorrect,
 } from "@/lib/learning/daily-bank";
@@ -309,13 +310,15 @@ function QuestionVisual({ question }: { question: Question }) {
       question.label === "Division story" ? Number(question.answer) : second;
     const total =
       question.label === "Division story" && third ? first : rows * columns;
+    const label =
+      question.label === "Division story"
+        ? `${total} items shared into ${rows} equal groups`
+        : question.label === "Missing number"
+          ? `${rows} equal rows; count the size of one row`
+          : `${rows} equal rows with ${columns} in each row`;
     return (
       <VisualShell title="See the structure">
-        <DotArray
-          rows={rows}
-          columns={columns}
-          label={`${rows} x ${columns} = ${total}`}
-        />
+        <DotArray rows={rows} columns={columns} label={label} />
       </VisualShell>
     );
   }

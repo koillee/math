@@ -2,6 +2,7 @@ import "./validate-daily-plan";
 import {
   buildDailySetFromSeed,
   estimateQuestionDifficulty,
+  hintRevealsAnswer,
   inferredPracticeLabels,
   isAnswerCorrect,
 } from "../src/app/daily-practice/DailyPractice";
@@ -69,6 +70,9 @@ for (let seed = 20260901; seed < 20261401; seed += 1) {
       throw new Error(
         `${question.id} has ambiguous or missing answer. Correct choices: ${correctChoices.join(", ")}`,
       );
+    }
+    if (hintRevealsAnswer(question)) {
+      throw new Error(`${question.id} has a hint that reveals ${question.answer}`);
     }
   }
   for (const question of dailySet.questions) {

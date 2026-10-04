@@ -1010,6 +1010,25 @@ export function isAnswerCorrect(question: Question, selected: string) {
   return selected === question.answer;
 }
 
+function containsStandalone(text: string, value: string) {
+  const escaped = value
+    .trim()
+    .toLowerCase()
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\s+/g, "\\s+");
+  if (!escaped) return false;
+  return new RegExp(`(^|[^a-z0-9])${escaped}($|[^a-z0-9])`, "i").test(
+    text.toLowerCase(),
+  );
+}
+
+export function hintRevealsAnswer(question: Question) {
+  return (
+    containsStandalone(question.hint, question.answer) &&
+    !containsStandalone(question.prompt, question.answer)
+  );
+}
+
 export function validateQuestion(question: Question) {
   const uniqueChoices = Array.from(new Set(question.choices));
   const correctChoices = uniqueChoices.filter((choice) =>
@@ -1019,6 +1038,9 @@ export function validateQuestion(question: Question) {
     throw new Error(
       `Invalid choices for ${question.id}: expected only ${question.answer}, got ${correctChoices.join(", ")}`,
     );
+  }
+  if (hintRevealsAnswer(question)) {
+    throw new Error(`Hint reveals the answer for ${question.id}`);
   }
   return { ...question, choices: uniqueChoices };
 }
@@ -1179,7 +1201,7 @@ export const templates: Template[] = [
           total - (divideByA ? a : b),
         ]),
         answer: String(divideByA ? b : a),
-        hint: "Use the same fact family. Division undoes multiplication.",
+        hint: "Cover the quotient. In the multiplication fact, which factor has not been used as the divisor?",
         explanation: `${a} x ${b} = ${total}, so ${total} divided by ${divideByA ? a : b} gives the missing factor ${divideByA ? b : a}.`,
         parentNote: "Ask Haim to say the full fact family aloud.",
       };
@@ -1227,7 +1249,7 @@ export const templates: Template[] = [
           groups * (size - 1),
         ]),
         answer: String(answer),
-        hint: "Equal groups usually means multiplication.",
+        hint: "Circle the number of groups and underline how many are in one group. Decide which operation joins equal groups.",
         explanation: `${groups} equal groups of ${size} means ${groups} x ${size} = ${answer}.`,
         parentNote:
           "Ask whether the answer is a total, a group size, or a number of groups.",
@@ -1259,7 +1281,7 @@ export const templates: Template[] = [
         prompt,
         choices: options(b, [a, b - 2, b + 2, total / 2]),
         answer: String(b),
-        hint: `Ask: ${total} divided by ${a} equals what?`,
+        hint: "Name the total and the known factor. Which inverse operation can uncover the missing factor?",
         explanation: `The missing number is ${b}, because ${a} x ${b} = ${total}.`,
         parentNote:
           "Missing-number problems become easier when she uses the inverse operation.",
@@ -1306,7 +1328,7 @@ export const templates: Template[] = [
           total - groups,
         ]),
         answer: String(answer),
-        hint: `Ask which number times ${groups} makes ${total}.`,
+        hint: "Draw the equal containers first. Are you finding how many groups there are, or the size of each group?",
         explanation: `${total} split into ${groups} equal groups is ${answer}, because ${groups} x ${answer} = ${total}.`,
         parentNote:
           "Ask Haim to name whether she is finding the group size or the number of groups.",
@@ -1353,7 +1375,7 @@ export const templates: Template[] = [
           rows * (columns - 1),
         ]),
         answer: String(answer),
-        hint: "Rows and columns make an array, so multiply.",
+        hint: "Point to one row, then count how many equal rows there are. What operation combines all the rows?",
         explanation: `${rows} rows of ${columns} is ${rows} x ${columns} = ${answer}.`,
         parentNote: "Arrays help connect multiplication to area later.",
       };
@@ -1390,7 +1412,7 @@ export const templates: Template[] = [
           den * num,
         ]),
         answer: String(answer),
-        hint: `First find 1/${den} by doing ${whole} / ${den}.`,
+        hint: "Start with the denominator: it tells you how many equal parts the whole must be split into. Then use the numerator.",
         explanation: `${whole} / ${den} = ${unit}, so ${num}/${den} is ${num} x ${unit} = ${answer}.`,
         parentNote: "Ask: what does the denominator tell us to do first?",
       };
@@ -1428,7 +1450,7 @@ export const templates: Template[] = [
         ]),
         answer,
         answerType: "fraction-equivalent",
-        hint: "Divide the numerator and denominator by the same common factor.",
+        hint: "Look for a number that divides both the numerator and denominator exactly. Use the same change on both.",
         explanation: `${base} simplifies to ${answer}. The value stays the same because both parts are scaled together.`,
         parentNote:
           "Ask Haim what common factor works for both numerator and denominator.",
@@ -1469,7 +1491,7 @@ export const templates: Template[] = [
         ]),
         answer,
         answerType: "fraction-equivalent",
-        hint: "Split the space from 0 to 1 into equal jumps.",
+        hint: "Let the denominator decide the number of equal spaces. Then count jumps from zero without naming the endpoint yet.",
         explanation: `${num} equal jumps out of ${den} lands at ${answer} of the whole interval from 0 to 1.`,
         parentNote: "If unsure, draw a line from 0 to 1 and mark equal jumps.",
       };
@@ -1508,7 +1530,7 @@ export const templates: Template[] = [
         ]),
         answer,
         answerType: "fraction-equivalent",
-        hint: "Equivalent fractions cover the same amount of the same whole.",
+        hint: "Ask what scale factor changes the numerator. The denominator must change by that same factor.",
         explanation: `${base} and ${answer} name the same part of the whole because the numerator and denominator changed by the same scale.`,
         parentNote:
           "Drawing two bars with the same length helps make equivalent fractions feel real.",
@@ -1568,7 +1590,7 @@ export const templates: Template[] = [
         prompt,
         choices: [left, right, "They are equal", "Cannot tell"].sort(),
         answer,
-        hint: "Think about the size of the equal parts, not just the digits.",
+        hint: "Check whether the denominators or numerators already match. Compare the same-sized parts, or use one half as a benchmark.",
         explanation: reason,
         parentNote: "Ask Haim to draw bars if the comparison feels unclear.",
       };
@@ -1602,7 +1624,7 @@ export const templates: Template[] = [
         prompt,
         choices: [left, right, "They are equal", "Cannot tell"].sort(),
         answer,
-        hint: "Add zeros at the end to line up place-value columns.",
+        hint: "Read both numbers by place value. Compare ones first, then tenths, then hundredths.",
         explanation: reason,
         parentNote:
           "Ask Haim to read the decimals as tenths, hundredths, or thousandths.",
@@ -1641,7 +1663,7 @@ export const templates: Template[] = [
           formatMoneyDecimal(answerCents + 100),
         ]),
         answer,
-        hint: "Line up the decimal points before adding.",
+        hint: "Rewrite the numbers so ones sit under ones and hundredths under hundredths. Start from the smallest place.",
         explanation: `${left} + ${right} = ${answer}. The decimal point stays lined up with the place-value columns.`,
         parentNote:
           "If she rushes, ask her to rewrite the numbers with matching decimal places.",
@@ -1680,7 +1702,7 @@ export const templates: Template[] = [
           formatMoneyDecimal(answerCents + 100),
         ]),
         answer,
-        hint: "Line up decimal points and regroup by place value if needed.",
+        hint: "Line up matching place-value columns. Work from right to left and pause where regrouping may be needed.",
         explanation: `${left} - ${right} = ${answer}. Dollars/cents thinking can help: subtract hundredths with hundredths.`,
         parentNote:
           "Subtraction with decimals is a good place to slow down and line up columns.",
@@ -1732,7 +1754,7 @@ export const templates: Template[] = [
         prompt,
         choices: [answer, distractorA, distractorB, "Cannot tell"].sort(),
         answer,
-        hint: "Read the final digit by its place-value column.",
+        hint: "Point to the decimal point, then name each column as you move right. The last occupied column gives the ending word.",
         explanation: `${value} is read as ${answer}. Place-value words help prevent digit-size mistakes.`,
         parentNote:
           "Ask Haim to say the decimal in words before comparing or calculating.",
@@ -1778,8 +1800,8 @@ export const templates: Template[] = [
         answer: answerText,
         hint:
           kind === "divide"
-            ? "Dividing moves digits to smaller place-value columns."
-            : "Multiplying moves digits to larger place-value columns.",
+            ? "Count the zeros in the divisor. Move every digit that many place-value columns toward smaller values."
+            : "Count the zeros in the factor. Move every digit that many place-value columns toward larger values.",
         explanation:
           kind === "divide"
             ? `${value} / ${factor} moves the digits to smaller place-value columns, giving ${answerText}.`
@@ -1793,17 +1815,17 @@ export const templates: Template[] = [
     label: "Benchmark percent",
     build(seed) {
       const [percent] = spreadPick(corePercentBenchmarks, seed, 261);
-      const [simplePercent, hundredParts] = simplifyParts(percent, 100);
+      const [, hundredParts] = simplifyParts(percent, 100);
       const whole = hundredParts * (4 + spread(seed, 263, 17));
       const answer = (whole * percent) / 100;
       const trick =
         percent === 50
-          ? "50% is half."
+          ? "Picture the whole split into two equal parts."
           : percent === 25
-            ? "25% is one quarter."
+            ? "Picture the whole split into four equal parts."
             : percent === 75
-              ? "75% is three quarters."
-              : `${percent}% means ${simplePercent}/${hundredParts} of the whole.`;
+              ? "Picture four equal parts and select three of them."
+              : "Rewrite the percent as a fraction of the whole, then simplify before calculating.";
       const prompt = spreadPick(
         [
           `What is ${percent}% of ${whole}?`,
@@ -1861,7 +1883,7 @@ export const templates: Template[] = [
         prompt,
         choices: options(answer, [discount, price + discount, price - percent]),
         answer: String(answer),
-        hint: "First find the discount amount, then subtract it from the original price.",
+        hint: "The question asks for the price paid, not the amount saved. Find the saved part first, then decide what remains.",
         explanation: `${percent}% of ${price} is ${discount}, so the sale price is ${price} - ${discount} = ${answer}.`,
         parentNote:
           "Check whether she answers the discount amount or the final sale price.",
@@ -1907,7 +1929,7 @@ export const templates: Template[] = [
         ]),
         answer,
         answerType: "fraction-equivalent",
-        hint: "Percent means out of 100, then simplify if possible.",
+        hint: "Write the percent over 100. Look for a common factor, but do not simplify only one part.",
         explanation: `${percent} is equivalent to ${answer}. It can also be written as ${decimal}.`,
         parentNote:
           "Ask Haim to connect the percent, fraction, and decimal form.",
@@ -1948,7 +1970,7 @@ export const templates: Template[] = [
           answer + part,
         ]),
         answer: String(answer),
-        hint: "Use the benchmark percent to undo the calculation.",
+        hint: "Treat the given part as one or more equal benchmark pieces. Work backwards to rebuild all the pieces in the whole.",
         explanation: `${percent}% of ${answer} is ${part}, so the whole is ${answer}.`,
         parentNote:
           "Finding the whole is harder than finding a percent of a number, so encourage a slow check.",
